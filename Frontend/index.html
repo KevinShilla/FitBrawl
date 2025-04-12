@@ -1,46 +1,91 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Page Title</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FitBrawl - Empower Your Fitness Journey</title>
+    <link rel="stylesheet" href="css/index.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
 </head>
+
 <body>
-  <div>
-    <h2>Sign Up</h2>
-    <form id="signup-form" action="/signup" method="post">
-      <label for="signup-email">Email:</label>
-      <input type="email" id="signup-email" name="email" required>
-      <br>
-      <label for="signup-username">Create Username:</label>
-      <input type="text" id="signup-username" name="username" required>
-      <br>
-      <label for="signup-password">Create Password:</label>
-      <input type="password" id="signup-password" name="password" required>
-      <br>
-      <button type="submit" id="submit-button">Sign Up</button>
-    </form>
-  </div>
+    <header>
+        <div class="header-container">
+            <h1>FitBrawl</h1>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="#signup-form">Sign Up</a></li>
+                    <li><a href="#login-form">Login</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
 
-  <div>
-   <!-- Login Form -->
-<div>
-    <h2>Login</h2>
-    <form id="login-form">
-      <label for="login-email">Email:</label>
-      <input type="email" id="login-email" required />
-      <br />
-      <label for="login-password">Password:</label>
-      <input type="password" id="login-password" required />
-      <br />
-      <button type="submit">Login</button>
-    </form>
-  </div>
-  
+    <section class="hero">
+        <div class="hero-content">
+            <h2>Welcome to FitBrawl</h2>
+            <p>Join the ultimate fitness community and achieve your goals together!</p>
+            <a href="#signup-form" class="cta-button">Get Started</a>
+        </div>
+    </section>
 
-  <!-- Firebase Scripts -->
-  <script type="module" src="js/firebase.js"></script>
-  <!-- <script type="module" src="js/auth.js"></script> --> <!-- Disabled for now -->
+    <!-- Forms Section -->
+    <div class="forms-wrapper">
+        <div class="signup-form-container">
+            <h2>Sign Up</h2>
+            <form id="signup-form" action="/signup" method="post">
+                <label for="signup-email">Email:</label>
+                <input type="email" id="signup-email" name="email" required>
+                <label for="signup-username">Create Username:</label>
+                <input type="text" id="signup-username" name="username" required>
+                <label for="signup-password">Create Password:</label>
+                <input type="password" id="signup-password" name="password" required>
+                <button type="submit" id="submit-button">Sign Up</button>
+            </form>
+        </div>
+
+        <div class="login-form-container">
+            <h2>Login</h2>
+            <form id="login-form">
+                <label for="login-email">Email:</label>
+                <input type="email" id="login-email" required />
+                <label for="login-password">Password:</label>
+                <input type="password" id="login-password" required />
+                <button type="submit">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <section class="about-section" id="about">
+        <div class="about-wrapper">
+            <div class="about-text">
+                <h2>Why Choose <span>FitBrawl?</span></h2>
+                <p>
+                    At FitBrawl, we believe fitness should be empowering, not intimidating.
+                    Whether you're a beginner or a seasoned athlete, our platform connects
+                    you with a vibrant community of trainers, enthusiasts, and motivators.
+                </p>
+                <p>
+                    Track progress, share milestones, challenge friends, and access customized
+                    plans to elevate your fitness journey. We're not just a fitness app—
+                    we’re a movement.
+                </p>
+                <a href="#signup-form" class="about-cta">Join the Movement</a>
+            </div>
+            <div class="about-image">
+                <img src="images/about-fitness.jpg" alt="FitBrawl Community in Action">
+            </div>
+        </div>
+    </section>
+    
+
+    <script type="module" src="js/firebase.js"></script>
 </body>
 </html>
