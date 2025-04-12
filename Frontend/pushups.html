@@ -162,6 +162,17 @@
       } else {
         location.href = "winner.html"; // In case of tie.
       }
+
+      // Save push-up count to localStorage
+      let previousTotal = Number(localStorage.getItem('totalPushups')) || 0;
+      let maxPushups = Number(localStorage.getItem('maxPushups')) || 0;
+
+      localStorage.setItem('totalPushups', previousTotal + pushUpCount);
+
+      if (pushUpCount > maxPushups) {
+        localStorage.setItem('maxPushups', pushUpCount);
+}
+
     });
     
     socket.on('battleCancelled', () => {
