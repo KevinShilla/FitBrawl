@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
         signInWithEmailAndPassword(auth, email, password)
           .then((userCredential) => {
             // Login successful
-            window.location.href = "profile.html";
+            window.location.href = "Home.html";
           })
           .catch((error) => {
             alert("Login failed: " + error.message);

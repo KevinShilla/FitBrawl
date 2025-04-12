@@ -1,0 +1,201 @@
+<!-- Frontend/pushups.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FitBrawl - Push-Ups Battle</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+    #controls {
+      text-align: center;
+      padding: 10px;
+      background: #ddd;
+    }
+    #container {
+      display: flex;
+      flex-direction: row;
+      height: calc(100vh - 80px);
+    }
+    .panel {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+    }
+    video {
+      width: 90%;
+      border: 2px solid #000;
+      background: #000;
+    }
+    #countdown {
+      font-size: 48px;
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button id="readyButton">Ready</button>
+    <div id="countdown"></div>
+  </div>
+  <div id="container">
+    <div class="panel" id="localPanel">
+      <h2>Your Camera (<span id="roleDisplay"></span>)</h2>
+      <video id="localVideo" playsinline autoplay muted></video>
+      <div id="localCount">Push-Ups: 0</div>
+    </div>
+    <div class="panel" id="remotePanel">
+      <h2>Opponent's Camera</h2>
+      <video id="remoteVideo" playsinline autoplay></video>
+      <div id="remoteCount">Push-Ups: 0</div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+
+  <script>
+    const socket = io();
+    let localRole = '';
+    let detector;
+    let localVideo = document.getElementById('localVideo');
+    let remoteVideo = document.getElementById('remoteVideo');
+    let localCountDisplay = document.getElementById('localCount');
+    let remoteCountDisplay = document.getElementById('remoteCount');
+    let pushUpCount = 0;
+    let pushUpState = "up";
+    let modelLoaded = false;
+    const downThreshold = 90;
+    const upThreshold = 160;
+    const beepAudio = new Audio('beep.mp3');
+    let battleActive = false; 
+
+    document.getElementById('readyButton').addEventListener('click', () => {
+      socket.emit('playerReady');
+      document.getElementById('readyButton').disabled = true;
+    });
+
+    socket.on('assignRole', (role) => {
+      localRole = role;
+      document.getElementById('roleDisplay').innerText = role;
+    });
+
+    socket.on('startCountdown', (number) => {
+      document.getElementById('countdown').innerText = number > 0 ? number : "GO!";
+    });
+
+    socket.on('startBattle', () => {
+      document.getElementById('countdown').innerText = "";
+      battleActive = true;
+      startPushUpDetection();
+    });
+
+    socket.on('updateScores', (data) => {
+      localCountDisplay.innerText = "Push-Ups: " + (localRole === 'A' ? data.A : data.B);
+      remoteCountDisplay.innerText = "Push-Ups: " + (localRole === 'A' ? data.B : data.A);
+    });
+
+    socket.on('battleResult', (data) => {
+      alert("Battle Over! " + data.winner + "\nScores - Player A: " + data.scores.A + " | Player B: " + data.scores.B);
+      location.reload();
+    });
+
+    socket.on('battleCancelled', () => {
+      alert("Battle cancelled. A player disconnected.");
+      location.reload();
+    });
+
+    async function setupCamera() {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        localVideo.srcObject = stream;
+        localVideo.play();
+    }
+    setupCamera();
+
+    async function loadPoseModel() {
+      document.getElementById('countdown').innerText = "Loading model...";
+      detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, {
+        modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING
+      });
+      modelLoaded = true;
+      document.getElementById('countdown').innerText = "";
+    }
+    loadPoseModel();
+
+    function startPushUpDetection() {
+      if (!modelLoaded) return;
+      detectPose();
+      setInterval(sendLocalVideoFrame, 1000);
+    }
+
+    async function detectPose() {
+      if (!modelLoaded || !battleActive) return;
+
+      const poses = await detector.estimatePoses(localVideo);
+      if (poses && poses.length > 0) {
+        const keypoints = poses[0].keypoints;
+        const leftShoulder = keypoints.find(kp => kp.name === "left_shoulder");
+        const leftElbow = keypoints.find(kp => kp.name === "left_elbow");
+        const leftWrist = keypoints.find(kp => kp.name === "left_wrist");
+        const rightShoulder = keypoints.find(kp => kp.name === "right_shoulder");
+        const rightElbow = keypoints.find(kp => kp.name === "right_elbow");
+        const rightWrist = keypoints.find(kp => kp.name === "right_wrist");
+
+        if (leftShoulder.score > 0.5 && leftElbow.score > 0.5 && leftWrist.score > 0.5 &&
+            rightShoulder.score > 0.5 && rightElbow.score > 0.5 && rightWrist.score > 0.5) {
+          const leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
+          const rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
+          const minAngle = Math.min(leftAngle, rightAngle);
+          if (pushUpState === "up" && minAngle < downThreshold) {
+            pushUpState = "down";
+          }
+          if (pushUpState === "down" && minAngle > upThreshold) {
+            pushUpCount++;
+            localCountDisplay.innerText = "Push-Ups: " + pushUpCount;
+            playBeep();
+            pushUpState = "up";
+            socket.emit('playerAction', { count: pushUpCount });
+          }
+        }
+      }
+      if (battleActive) {
+        requestAnimationFrame(detectPose);
+      }
+    }
+
+    function calculateAngle(A, B, C) {
+      const AB = { x: A.x - B.x, y: A.y - B.y };
+      const CB = { x: C.x - B.x, y: C.y - B.y };
+      const dot = (AB.x * CB.x + AB.y * CB.y);
+      const magAB = Math.sqrt(AB.x ** 2 + AB.y ** 2);
+      const magCB = Math.sqrt(CB.x ** 2 + CB.y ** 2);
+      const angleRad = Math.acos(dot / (magAB * magCB));
+      return angleRad * (180 / Math.PI);
+    }
+
+    function playBeep() {
+      beepAudio.currentTime = 0;
+      beepAudio.play();
+    }
+
+    function sendLocalVideoFrame() {
+      const canvas = document.createElement('canvas');
+      canvas.width = localVideo.videoWidth;
+      canvas.height = localVideo.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(localVideo, 0, 0, canvas.width, canvas.height);
+      const dataURL = canvas.toDataURL('image/jpeg', 0.5);
+      socket.emit('videoFrame', dataURL);
+    }
+
+    socket.on('remoteFrame', (dataURL) => {
+      remoteVideo.src = dataURL;
+    });
+  </script>
+</body>
+</html>
