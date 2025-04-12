@@ -237,7 +237,7 @@
     });
 
     function startBattleTimer() {
-      battleTimeLeft = 30;
+      battleTimeLeft = 15;
       const battleTimerInterval = setInterval(() => {
         battleTimeLeft--;
         const timerDisplay = document.getElementById('battleTimerDisplay');
@@ -253,6 +253,19 @@
             timerDisplay.classList.remove('intense');
           }, 1000);
         }
+        const profileButton = document.createElement("button");
+        profileButton.className = "profile-button";
+        profileButton.textContent = "Profile";
+        profileButton.onclick = () => { location.href = 'profile.html'; };
+
+        const homeButton = document.createElement("button");
+        homeButton.className = "home-button";
+        homeButton.textContent = "Home";
+        homeButton.onclick = () => { location.href = 'Home.html'; };
+
+        const controls = document.getElementById('controls');
+        controls.appendChild(profileButton);
+        controls.appendChild(homeButton);
       }, 1000);
     }
   </script>
