@@ -319,11 +319,6 @@ async function updateFirebaseData(pushUpCount) {
         countdownDisplay.innerText = "Time Left: " + battleTimeLeft + "s";
         if (battleTimeLeft <= 5 && battleTimeLeft > 0) {
           countdownDisplay.classList.add('intense');
-          if (!countdownAudioPlayed) {
-            countdownAudio.currentTime = 0;
-            countdownAudio.play();
-            countdownAudioPlayed = true;
-          }
         }
         if (battleTimeLeft <= 0) {
           clearInterval(timerInterval);
