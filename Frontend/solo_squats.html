@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Squat Counter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      background: #f0f0f0;
+    }
+    h1 {
+      margin-top: 20px;
+    }
+    #startButton {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 20px;
+      cursor: pointer;
+    }
+    #counter {
+      font-size: 20px;
+      margin: 10px;
+    }
+    #message {
+      font-size: 18px;
+      color: green;
+      height: 24px;
+      margin-bottom: 10px;
+    }
+    #video, #canvas {
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    /* Hide the video element as we only use it for the source */
+    #video {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Squat Counter</h1>
+  <button id="startButton">Start</button>
+  <div id="message"></div>
+  <div id="counter">Squats: 0</div>
+  <video id="video" playsinline></video>
+  <canvas id="canvas"></canvas>
+
+  <!-- TensorFlow.js and MoveNet pose detection -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+
+  <script>
+    let detector, video, canvas, ctx;
+    let squatCount = 0;
+    let squatState = "up"; // "up" means standing; "down" means squat position.
+    let modelLoaded = false;
+    // For squats, we use knee angles:
+    const downThreshold = 90;   // When knee angle is less than 90°, the person is squatting down.
+    const upThreshold = 160;    // When knee angle goes above 160°, the person has risen.
+    const beepAudio = new Audio('beep.mp3'); // Place beep.mp3 in your Frontend folder (or update the path).
+
+    document.getElementById('startButton').addEventListener('click', startApp);
+
+    async function startApp() {
+      document.getElementById('startButton').style.display = "none";
+
+      video = document.getElementById('video');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        await video.play();
+      } catch (error) {
+        document.getElementById('message').innerText = "Camera access denied or not supported.";
+        return;
+      }
+
+      canvas = document.getElementById('canvas');
+      ctx = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      document.getElementById('message').innerText = "Loading pose detection model...";
+      detector = await poseDetection.createDetector(
+        poseDetection.SupportedModels.MoveNet, 
+        { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+      );
+      modelLoaded = true;
+      document.getElementById('message').innerText = "";
+
+      detectPose();
+    }
+
+    function calculateAngle(A, B, C) {
+      const AB = { x: A.x - B.x, y: A.y - B.y };
+      const CB = { x: C.x - B.x, y: C.y - B.y };
+      const dot = AB.x * CB.x + AB.y * CB.y;
+      const magAB = Math.sqrt(AB.x ** 2 + AB.y ** 2);
+      const magCB = Math.sqrt(CB.x ** 2 + CB.y ** 2);
+      const angleRad = Math.acos(dot / (magAB * magCB));
+      return angleRad * (180 / Math.PI);
+    }
+
+    async function detectPose() {
+      if (!modelLoaded) return;
+
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const poses = await detector.estimatePoses(video);
+      if (poses && poses.length > 0) {
+        const keypoints = poses[0].keypoints;
+
+        const leftHip = keypoints.find(kp => kp.name === "left_hip");
+        const leftKnee = keypoints.find(kp => kp.name === "left_knee");
+        const leftAnkle = keypoints.find(kp => kp.name === "left_ankle");
+        const rightHip = keypoints.find(kp => kp.name === "right_hip");
+        const rightKnee = keypoints.find(kp => kp.name === "right_knee");
+        const rightAnkle = keypoints.find(kp => kp.name === "right_ankle");
+
+        if (leftHip && leftKnee && leftAnkle && rightHip && rightKnee && rightAnkle &&
+            leftHip.score > 0.5 && leftKnee.score > 0.5 && leftAnkle.score > 0.5 &&
+            rightHip.score > 0.5 && rightKnee.score > 0.5 && rightAnkle.score > 0.5) {
+
+          const leftKneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
+          const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
+          const minKneeAngle = Math.min(leftKneeAngle, rightKneeAngle);
+
+          if (squatState === "up" && minKneeAngle < downThreshold) {
+            squatState = "down";
+          }
+          if (squatState === "down" && minKneeAngle > upThreshold) {
+            squatCount++;
+            document.getElementById('counter').innerText = "Squats: " + squatCount;
+            playBeep();
+            squatState = "up";
+          }
+        }
+
+        drawKeypoints(keypoints);
+      }
+
+      requestAnimationFrame(detectPose);
+    }
+
+    function drawKeypoints(keypoints) {
+      keypoints.forEach(kp => {
+        if (kp.score > 0.5) {
+          ctx.beginPath();
+          ctx.arc(kp.x, kp.y, 5, 0, 2 * Math.PI);
+          ctx.fillStyle = "blue";
+          ctx.fill();
+        }
+      });
+    }
+
+    function playBeep() {
+      beepAudio.currentTime = 0;
+      beepAudio.play();
+    }
+  </script>
+</body>
+</html>
