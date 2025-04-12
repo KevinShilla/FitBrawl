@@ -42,12 +42,8 @@
 </head>
 <body>
   <h1>Squat Counter</h1>
-  <p>This code creates a squat counter web page that uses your computer camera to monitor your exercise form and count the number of squats you perform. </p>
-  <p>When you click the start button, the page asks for access to your camera and begins displaying a hidden video feed (used for analysis) and a canvas </p>
-  <p>where it draws the video frames. It then loads a machine learning model that detects key parts of your body (like your hips, knees, and ankles) and </p>
-  <p>continuously calculates the angle at your knee. When the model sees that you squat down (the knee angle becomes small) and then stand back up (the knee </p>
-  <p>angle becomes large again), it increments your squat counter and plays a beep sound. The code also draws markers on your video image to help visualize the </p>
-  <p>detected body points, making it easier to see how the model is tracking your movements.</p>
+  <p>This code creates a squat counter web page that uses your computer camera to monitor your exercise form and count the number of squats you perform.</p>
+  <p>When you click the start button, the page asks for access to your camera and begins displaying a hidden video feed (used for analysis) and a canvas where it draws the video frames. It then loads a machine learning model that detects key parts of your body (like your hips, knees, and ankles) and continuously calculates the angle at your knee. When the model sees that you squat down (the knee angle becomes small) and then stand back up (the knee angle becomes large again), it increments your squat counter and plays a beep sound. The code also draws markers on your video image to help visualize the detected body points, making it easier to see how the model is tracking your movements.</p>
   <button id="startButton">Start</button>
   <div id="message"></div>
   <div id="counter">Squats: 0</div>
@@ -62,7 +58,8 @@
     let squatCount = 0;
     let squatState = "up";
     let modelLoaded = false;
-    const downThreshold = 90;
+    // Adjusted threshold: allow squats that reach around 90-100 degree angle
+    const downThreshold = 100;  // You can adjust this value as needed.
     const upThreshold = 160;
     const beepAudio = new Audio('beep.mp3');
 
@@ -131,7 +128,8 @@
           const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
           const minKneeAngle = Math.min(leftKneeAngle, rightKneeAngle);
 
-          if (squatState === "up" && minKneeAngle < downThreshold) {
+          // Use <= to catch a 90 degree squat (or a bit more if desired)
+          if (squatState === "up" && minKneeAngle <= downThreshold) {
             squatState = "down";
           }
           if (squatState === "down" && minKneeAngle > upThreshold) {
@@ -163,7 +161,6 @@
       beepAudio.currentTime = 0;
       beepAudio.play();
     }
-
   </script>
 </body>
 </html>
