@@ -211,21 +211,19 @@
         <h1>Welcome, <span id="username">[Username]</span>!</h1>
     </header>
 
-    <div id="stats" class="stats-container">
-        <p>Total Push-Ups Across All Games: <span id="totalPushups">0</span></p>
-        <p>Max Push-Ups in One Game: <span id="maxPushups">0</span></p>
-        <p>Total Squats Across All Games: <span id="totalSquats">0</span></p>
-        <p>Max Squats in One Game: <span id="maxSquats">0</span></p>
-        <p>Total Punches Across All Games: <span id="totalPunches">0</span></p>
-        <p>Max Punches in One Game: <span id="maxPunches">0</span></p>
-    </div>
 
-    <div class="progress-bar-container">
-        <h3>Level Progress</h3>
-        <div class="progress-bar">
-            <span></span>
-        </div>
-    </div>
+        <h1>Your Push-Up Stats</h1>
+        <div class="stat" id="totalReps">Total Push-Ups: 0</div>
+        <div class="stat" id="maxReps">Most in One Game: 0</div>
+      
+        <script>
+          const totalReps = localStorage.getItem("totalReps") || 0;
+          const maxReps = localStorage.getItem("maxReps") || 0;
+      
+          document.getElementById("totalReps").innerText = "Total Push-Ups: " + totalReps;
+          document.getElementById("maxReps").innerText = "Most in One Game: " + maxReps;
+        </script>
+     
 
     <div id="leaderboard" class="leaderboard">
         <h2>Leaderboard</h2>
