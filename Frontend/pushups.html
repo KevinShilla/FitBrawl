@@ -15,26 +15,10 @@
       padding: 10px;
       background: #ddd;
     }
-    #preBattleCountdown {
+    #countdown {
       font-size: 48px;
       color: red;
-    }
-    #battleTimerDisplay {
-      font-size: 36px;
-      color: #333;
       margin-top: 10px;
-    }
-    /* Intense animation for final seconds */
-    .intense {
-      animation: shake 0.5s infinite;
-      color: red;
-    }
-    @keyframes shake {
-      0% { transform: translate(0px, 0px); }
-      25% { transform: translate(5px, 0px); }
-      50% { transform: translate(0px, 5px); }
-      75% { transform: translate(-5px, 0px); }
-      100% { transform: translate(0px, -5px); }
     }
     #container {
       display: flex;
@@ -51,19 +35,30 @@
       border: 2px solid #000;
       background: #000;
     }
-    /* Opponent's feed is displayed via snapshots in an image */
+    /* Opponent's feed is shown as an image */
     #remoteFeed {
       width: 90%;
       border: 2px solid #000;
       background: #000;
+    }
+    /* Intense effect for final seconds */
+    .intense {
+      animation: shake 0.5s infinite;
+      color: red;
+    }
+    @keyframes shake {
+      0% { transform: translate(0px, 0px); }
+      25% { transform: translate(5px, 0px); }
+      50% { transform: translate(0px, 5px); }
+      75% { transform: translate(-5px, 0px); }
+      100% { transform: translate(0px, -5px); }
     }
   </style>
 </head>
 <body>
   <div id="controls">
     <button id="readyButton">Ready</button>
-    <div id="preBattleCountdown"></div>
-    <div id="battleTimerDisplay"></div>
+    <div id="countdown"></div>
   </div>
   <div id="container">
     <div class="panel" id="localPanel">
@@ -77,11 +72,12 @@
       <div id="remoteCount">Push-Ups: 0</div>
     </div>
   </div>
-  
+
+  <!-- Include Socket.IO and TensorFlow.js -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
-  
+
   <script>
     const socket = io();
     let localRole = '';
@@ -90,20 +86,43 @@
     const remoteFeed = document.getElementById('remoteFeed');
     const localCountDisplay = document.getElementById('localCount');
     const remoteCountDisplay = document.getElementById('remoteCount');
-    const preBattleCountdown = document.getElementById('preBattleCountdown');
-    const battleTimerDisplay = document.getElementById('battleTimerDisplay');
+    const countdownDisplay = document.getElementById('countdown');
     let pushUpCount = 0;
     let pushUpState = "up";
     let modelLoaded = false;
     const downThreshold = 90;
     const upThreshold = 160;
     const beepAudio = new Audio('beep.mp3');
-    const threeSecondAudio = new Audio('312.mp3'); // Make sure 312.mp3 is in your Frontend folder.
+    const countdownAudio = new Audio('countdown.mp3'); // This is your countdown audio file.
     let battleActive = false;
     let battleTimeLeft = 30;
-    let threeSecondPlayed = false;
+    let countdownAudioPlayed = false;
     
-    // When "Ready" is clicked, notify the server.
+    // Start the local camera immediately so the feed shows.
+    async function setupCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        localVideo.srcObject = stream;
+        localVideo.play();
+      } catch (error) {
+        alert("Camera error: " + error);
+      }
+    }
+    setupCamera();
+    
+    // Load the MoveNet model.
+    async function loadPoseModel() {
+      countdownDisplay.innerText = "Loading model...";
+      detector = await poseDetection.createDetector(
+        poseDetection.SupportedModels.MoveNet,
+        { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+      );
+      modelLoaded = true;
+      countdownDisplay.innerText = "";
+    }
+    loadPoseModel();
+    
+    // When "Ready" is clicked, tell the server.
     document.getElementById('readyButton').addEventListener('click', () => {
       socket.emit('playerReady');
       document.getElementById('readyButton').disabled = true;
@@ -114,14 +133,13 @@
       document.getElementById('roleDisplay').innerText = role;
     });
     
-    // Pre-battle countdown from the server.
     socket.on('startCountdown', (number) => {
-      preBattleCountdown.innerText = number > 0 ? number : "GO!";
+      countdownDisplay.innerText = number > 0 ? number : "GO!";
     });
     
-    // When battle starts, clear pre-battle countdown, begin push-up detection, and start the battle timer.
+    // When the battle starts, clear countdown, start push-up detection and timer.
     socket.on('startBattle', () => {
-      preBattleCountdown.innerText = "";
+      countdownDisplay.innerText = "";
       battleActive = true;
       startPushUpDetection();
       startBattleTimer();
@@ -132,20 +150,17 @@
       remoteCountDisplay.innerText = "Push-Ups: " + (localRole === 'A' ? data.B : data.A);
     });
     
-    // When battle result is received, compare scores and redirect.
+    // When the battle result is received, store the final count and redirect.
     socket.on('battleResult', (data) => {
-      // Determine local and remote scores based on role.
       const localScore = localRole === 'A' ? data.scores.A : data.scores.B;
       const remoteScore = localRole === 'A' ? data.scores.B : data.scores.A;
-      // Save the final count to sessionStorage.
       sessionStorage.setItem("finalCount", localScore);
-      // Redirect based on score comparison.
       if (localScore > remoteScore) {
         location.href = "winner.html";
       } else if (localScore < remoteScore) {
         location.href = "loser.html";
       } else {
-        location.href = "winner.html"; // For a tie, you can choose either.
+        location.href = "winner.html"; // In case of tie.
       }
     });
     
@@ -154,16 +169,17 @@
       location.reload();
     });
     
-    // Start push-up detection.
+    // Push-up detection.
     function startPushUpDetection() {
       if (!modelLoaded) return;
       detectPose();
-      setInterval(sendLocalVideoFrame, 1000); // Send a snapshot every second.
+      setInterval(sendLocalVideoFrame, 1000);
     }
     
     async function detectPose() {
       if (!modelLoaded || !battleActive) return;
       
+      // Create temporary canvas.
       const tmpCanvas = document.createElement('canvas');
       tmpCanvas.width = localVideo.videoWidth;
       tmpCanvas.height = localVideo.videoHeight;
@@ -232,31 +248,30 @@
       remoteFeed.src = dataURL;
     });
     
-    // Start the battle timer (30 seconds) with intense animation and audio on the last 3 seconds.
+    // Start battle timer (30s) with countdown.mp3 played when time is 3 seconds or less.
     function startBattleTimer() {
       battleTimeLeft = 30;
-      threeSecondPlayed = false;
+      countdownAudioPlayed = false;
       const timerInterval = setInterval(() => {
         battleTimeLeft--;
-        battleTimerDisplay.innerText = "Time Left: " + battleTimeLeft + "s";
+        countdownDisplay.innerText = "Time Left: " + battleTimeLeft + "s";
         if (battleTimeLeft <= 3 && battleTimeLeft > 0) {
-          battleTimerDisplay.classList.add('intense');
-          if (!threeSecondPlayed) {
-            threeSecondAudio.currentTime = 0;
-            threeSecondAudio.play();
-            threeSecondPlayed = true;
+          countdownDisplay.classList.add('intense');
+          if (!countdownAudioPlayed) {
+            countdownAudio.currentTime = 0;
+            countdownAudio.play();
+            countdownAudioPlayed = true;
           }
         }
         if (battleTimeLeft <= 0) {
           clearInterval(timerInterval);
-          battleTimerDisplay.innerText = "STOP!";
+          countdownDisplay.innerText = "STOP!";
           setTimeout(() => {
-            battleTimerDisplay.classList.remove('intense');
+            countdownDisplay.classList.remove('intense');
           }, 1000);
         }
       }, 1000);
     }
-    
   </script>
 </body>
 </html>
