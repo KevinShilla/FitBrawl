@@ -15,22 +15,9 @@
       padding: 10px;
       background: #ddd;
     }
-    #battleTimerDisplay {
-      font-size: 36px;
-      margin: 10px;
-      color: #333;
-      transition: all 0.3s ease;
-    }
-    .intense {
-      animation: shake 0.5s infinite;
+    #countdown {
+      font-size: 48px;
       color: red;
-    }
-    @keyframes shake {
-      0% { transform: translate(0px, 0px); }
-      25% { transform: translate(5px, 0px); }
-      50% { transform: translate(0px, 5px); }
-      75% { transform: translate(-5px, 0px); }
-      100% { transform: translate(0px, -5px); }
     }
     #container {
       display: flex;
@@ -47,14 +34,11 @@
       border: 2px solid #000;
       background: #000;
     }
+    /* We'll use an image for opponent's snapshots */
     #remoteFeed {
       width: 90%;
       border: 2px solid #000;
       background: #000;
-    }
-    #countdown {
-      font-size: 48px;
-      color: red;
     }
   </style>
 </head>
@@ -62,7 +46,6 @@
   <div id="controls">
     <button id="readyButton">Ready</button>
     <div id="countdown"></div>
-    <div id="battleTimerDisplay"></div>
   </div>
   <div id="container">
     <div class="panel" id="localPanel">
@@ -85,10 +68,11 @@
     const socket = io();
     let localRole = '';
     let detector;
-    let localVideo = document.getElementById('localVideo');
-    let remoteFeed = document.getElementById('remoteFeed');
-    let localCountDisplay = document.getElementById('localCount');
-    let remoteCountDisplay = document.getElementById('remoteCount');
+    const localVideo = document.getElementById('localVideo');
+    const remoteFeed = document.getElementById('remoteFeed');
+    const localCountDisplay = document.getElementById('localCount');
+    const remoteCountDisplay = document.getElementById('remoteCount');
+    const countdownDisplay = document.getElementById('countdown');
     let pushUpCount = 0;
     let pushUpState = "up";
     let modelLoaded = false;
@@ -96,54 +80,8 @@
     const upThreshold = 160;
     const beepAudio = new Audio('beep.mp3');
     let battleActive = false;
-    let battleTimeLeft = 30;
-
-    document.getElementById('readyButton').addEventListener('click', () => {
-      socket.emit('playerReady');
-      document.getElementById('readyButton').disabled = true;
-    });
-
-    socket.on('assignRole', (role) => {
-      localRole = role;
-      document.getElementById('roleDisplay').innerText = role;
-    });
-
-    socket.on('startCountdown', (number) => {
-      document.getElementById('countdown').innerText = number > 0 ? number : "GO!";
-    });
-
-    socket.on('startBattle', () => {
-      document.getElementById('countdown').innerText = "";
-      battleActive = true;
-      startPushUpDetection();
-      startBattleTimer();
-    });
-
-    socket.on('updateScores', (data) => {
-      localCountDisplay.innerText = "Push-Ups: " + (localRole === 'A' ? data.A : data.B);
-      remoteCountDisplay.innerText = "Push-Ups: " + (localRole === 'A' ? data.B : data.A);
-    });
-
-    socket.on('battleResult', (data) => {
-      alert("Battle Over! " + data.winner + "\nScores - Player A: " + data.scores.A + " | Player B: " + data.scores.B);
-      // Save push-up count to localStorage
-    let previousTotal = Number(localStorage.getItem('totalPushups')) || 0;
-    let maxPushups = Number(localStorage.getItem('maxPushups')) || 0;
-
-    localStorage.setItem('totalPushups', previousTotal + pushUpCount);
-
-    if (pushUpCount > maxPushups) {
-    localStorage.setItem('maxPushups', pushUpCount);
-  }
-
-      location.reload();
-    });
-
-    socket.on('battleCancelled', () => {
-      alert("Battle cancelled. A player disconnected.");
-      location.reload();
-    });
-
+    
+    // Start the local camera immediately so the feed shows.
     async function setupCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -154,27 +92,83 @@
       }
     }
     setupCamera();
-
+    
+    // Load the MoveNet pose detection model.
     async function loadPoseModel() {
-      document.getElementById('countdown').innerText = "Loading model...";
+      countdownDisplay.innerText = "Loading model...";
       detector = await poseDetection.createDetector(
         poseDetection.SupportedModels.MoveNet,
         { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
       );
       modelLoaded = true;
-      document.getElementById('countdown').innerText = "";
+      countdownDisplay.innerText = "";
     }
     loadPoseModel();
-
+    
+    // Ready button: notify server.
+    document.getElementById('readyButton').addEventListener('click', () => {
+      socket.emit('playerReady');
+      document.getElementById('readyButton').disabled = true;
+    });
+    
+    socket.on('assignRole', (role) => {
+      localRole = role;
+      document.getElementById('roleDisplay').innerText = role;
+    });
+    
+    socket.on('startCountdown', (number) => {
+      countdownDisplay.innerText = number > 0 ? number : "GO!";
+    });
+    
+    // When the battle starts, begin push-up detection.
+    socket.on('startBattle', () => {
+      countdownDisplay.innerText = "";
+      battleActive = true;
+      startPushUpDetection();
+    });
+    
+    // When the battle result is received, compare scores and redirect.
+    socket.on('battleResult', (data) => {
+      // Determine the local player's score and the opponent's score.
+      const localScore = localRole === 'A' ? data.scores.A : data.scores.B;
+      const remoteScore = localRole === 'A' ? data.scores.B : data.scores.A;
+      
+      if (localScore > remoteScore) {
+        location.href = "winner.html";
+      } else if (localScore < remoteScore) {
+        location.href = "loser.html";
+      } else {
+        // In a tie, choose one (or add a tie-break page). Here we choose winner.html.
+        location.href = "winner.html";
+      }
+    });
+    
+    socket.on('updateScores', (data) => {
+      localCountDisplay.innerText = "Push-Ups: " + (localRole === 'A' ? data.A : data.B);
+      remoteCountDisplay.innerText = "Push-Ups: " + (localRole === 'A' ? data.B : data.A);
+    });
+    
+    socket.on('battleCancelled', () => {
+      alert("Battle cancelled. A player disconnected.");
+      location.reload();
+    });
+    
     function startPushUpDetection() {
       if (!modelLoaded) return;
       detectPose();
-      setInterval(sendLocalVideoFrame, 150);
+      setInterval(sendLocalVideoFrame, 1000);
     }
-
+    
     async function detectPose() {
       if (!modelLoaded || !battleActive) return;
-
+      
+      // Draw the video frame on a temporary canvas.
+      const tmpCanvas = document.createElement('canvas');
+      tmpCanvas.width = localVideo.videoWidth;
+      tmpCanvas.height = localVideo.videoHeight;
+      const tmpCtx = tmpCanvas.getContext('2d');
+      tmpCtx.drawImage(localVideo, 0, 0, tmpCanvas.width, tmpCanvas.height);
+      
       const poses = await detector.estimatePoses(localVideo);
       if (poses && poses.length > 0) {
         const keypoints = poses[0].keypoints;
@@ -184,12 +178,13 @@
         const rightShoulder = keypoints.find(kp => kp.name === "right_shoulder");
         const rightElbow = keypoints.find(kp => kp.name === "right_elbow");
         const rightWrist = keypoints.find(kp => kp.name === "right_wrist");
-
+    
         if (leftShoulder.score > 0.5 && leftElbow.score > 0.5 && leftWrist.score > 0.5 &&
             rightShoulder.score > 0.5 && rightElbow.score > 0.5 && rightWrist.score > 0.5) {
           const leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
           const rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
           const minAngle = Math.min(leftAngle, rightAngle);
+    
           if (pushUpState === "up" && minAngle < downThreshold) {
             pushUpState = "down";
           }
@@ -206,7 +201,7 @@
         requestAnimationFrame(detectPose);
       }
     }
-
+    
     function calculateAngle(A, B, C) {
       const AB = { x: A.x - B.x, y: A.y - B.y };
       const CB = { x: C.x - B.x, y: C.y - B.y };
@@ -216,58 +211,25 @@
       const angleRad = Math.acos(dot / (magAB * magCB));
       return angleRad * (180 / Math.PI);
     }
-
+    
     function playBeep() {
       beepAudio.currentTime = 0;
       beepAudio.play();
     }
-
+    
     function sendLocalVideoFrame() {
-      const canvas = document.createElement('canvas');
-      canvas.width = localVideo.videoWidth;
-      canvas.height = localVideo.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(localVideo, 0, 0, canvas.width, canvas.height);
-      const dataURL = canvas.toDataURL('image/jpeg', 0.5);
+      const tmpCanvas = document.createElement('canvas');
+      tmpCanvas.width = localVideo.videoWidth;
+      tmpCanvas.height = localVideo.videoHeight;
+      const tmpCtx = tmpCanvas.getContext('2d');
+      tmpCtx.drawImage(localVideo, 0, 0, tmpCanvas.width, tmpCanvas.height);
+      const dataURL = tmpCanvas.toDataURL('image/jpeg', 0.5);
       socket.emit('videoFrame', dataURL);
     }
-
+    
     socket.on('remoteFrame', (dataURL) => {
       remoteFeed.src = dataURL;
     });
-
-    function startBattleTimer() {
-      battleTimeLeft = 15;
-      const battleTimerInterval = setInterval(() => {
-        battleTimeLeft--;
-        const timerDisplay = document.getElementById('battleTimerDisplay');
-        timerDisplay.innerText = "Time Left: " + battleTimeLeft + "s";
-        if (battleTimeLeft <= 3 && battleTimeLeft > 0) {
-          timerDisplay.classList.add('intense');
-        }
-
-        if (battleTimeLeft <= 0) {
-          clearInterval(battleTimerInterval);
-          timerDisplay.innerText = "STOP!";
-          setTimeout(() => {
-            timerDisplay.classList.remove('intense');
-          }, 1000);
-        }
-      }, 1000);
-      const profileButton = document.createElement("button");
-        profileButton.className = "profile-button";
-        profileButton.textContent = "Profile";
-        profileButton.onclick = () => { location.href = 'profile.html'; };
-
-        const homeButton = document.createElement("button");
-        homeButton.className = "home-button";
-        homeButton.textContent = "Home";
-        homeButton.onclick = () => { location.href = 'Home.html'; };
-
-        const controls = document.getElementById('controls');
-        controls.appendChild(profileButton);
-        controls.appendChild(homeButton);
-    }
   </script>
 </body>
 </html>

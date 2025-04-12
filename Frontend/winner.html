@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FitBrawl - Winner!</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #d1ffd1;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 72px;
+      font-weight: bold;
+      color: green;
+      margin-top: 40px;
+    }
+    h2 {
+      font-size: 36px;
+      margin-top: 20px;
+    }
+    #cameraFeed {
+      width: 80%;
+      max-width: 600px;
+      border: 2px solid #000;
+      background: #000;
+      margin-top: 20px;
+    }
+    .button-group {
+      margin-top: 30px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>WINNER!</h1>
+  <h2>Push-Ups: <span id="finalCount">0</span></h2>
+  <video id="cameraFeed" playsinline autoplay muted></video>
+  <div class="button-group">
+    <button onclick="location.href='profile.html'">Profile</button>
+    <button onclick="location.href='Home.html'">Home</button>
+  </div>
+  <script>
+    const finalCount = sessionStorage.getItem("finalCount") || "N/A";
+    document.getElementById("finalCount").innerText = finalCount;
+
+    async function setupCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const videoEl = document.getElementById("cameraFeed");
+        videoEl.srcObject = stream;
+        videoEl.play();
+      } catch (error) {
+        console.error("Camera error:", error);
+      }
+    }
+    setupCamera();
+  </script>
+</body>
+</html>
