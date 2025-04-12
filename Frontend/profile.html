@@ -1,12 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile</title>
+  <meta charset="UTF-8">
+  <title>Your FitBrawl Profile</title>
 </head>
 <body>
-    <h1>I hate niggers oh i do</h1>
-    <script type="module" src="js/firebase.js"></script>
+  <h1>Welcome, <span id="username">[Username]</span></h1>
+  <p>Total Push-Ups Across All Games: <span id="totalPushups">0</span></p>
+  <p>Max Push-Ups in One Game: <span id="maxPushups">0</span></p>
+
+  <script>
+    // Later you can update this to get the actual username
+    document.getElementById('username').innerText = "Player1"; // Placeholder
+
+    document.getElementById('totalPushups').innerText = localStorage.getItem('totalPushups') || 0;
+    document.getElementById('maxPushups').innerText = localStorage.getItem('maxPushups') || 0;
+  </script>
 </body>
 </html>
