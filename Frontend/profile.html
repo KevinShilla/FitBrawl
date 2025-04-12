@@ -1,35 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>FitBrawl - Profile</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #fafafa;
-      text-align: center;
-      padding: 50px;
-    }
-    h1 {
-      color: #333;
-    }
-    .stats {
-      margin-top: 30px;
-      font-size: 24px;
-      color: #444;
-    }
-    .stat {
-      margin: 20px 0;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile</title>
+  <script src="firebase.js"></script> <!-- Include Firebase setup -->
+  <script src="profile.js"></script> <!-- Include the updated JavaScript -->
 </head>
 <body>
-  <h1>🏋️ Your FitBrawl Stats 🏋️</h1>
-  <div class="stats">
-    <div class="stat" id="totalReps">Total Push-Ups: 0</div>
-    <div class="stat" id="maxReps">Max in One Match: 0</div>
+  <div id="profile-container">
+    <h1>Welcome to Your Profile</h1>
+    <!-- Displaying username dynamically -->
+    <div id="username"></div>
+    <!-- Displaying total push-ups dynamically -->
+    <div id="totalReps">Total Push-Ups: 0</div>
+    <!-- Displaying max reps dynamically -->
+    <div id="maxReps">Max in One Match: 0</div>
   </div>
-
-  <script src="profile.js"></script>
 </body>
 </html>
