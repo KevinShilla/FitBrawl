@@ -78,7 +78,6 @@
     </div>
   </div>
 
-  <!-- Include Socket.IO and TensorFlow.js -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
@@ -98,7 +97,7 @@
     const downThreshold = 90;
     const upThreshold = 160;
     const beepAudio = new Audio('beep.mp3');
-    const countdownAudio = new Audio('countdown.mp3'); // This is your countdown audio file.
+    const countdownAudio = new Audio('countdown.mp3'); 
     let battleActive = false;
     let battleTimeLeft = 30;
     let countdownAudioPlayed = false;
@@ -129,6 +128,7 @@
     
     // When "Ready" is clicked, tell the server.
     document.getElementById('readyButton').addEventListener('click', () => {
+      countdownAudio.play();
       socket.emit('playerReady');
       document.getElementById('readyButton').disabled = true;
     });
@@ -197,11 +197,7 @@
   let minAngle = 0;  // Set your angle threshold for detection
   let upThreshold = 90;  // Customize this threshold for the 'up' state
   
-  // Assuming the pose data is updated continuously in the loop
   if (pose) {
-    // Extract the angle of the arms (or relevant body parts) to determine 'up' and 'down' states
-    // This logic needs to be based on your pose detection and the angle calculation.
-    // For example, detect if the angle of the arm is between a threshold of 'up' and 'down'.
 
     let angle = calculateArmAngle(pose);  // Replace with actual angle calculation logic
 
