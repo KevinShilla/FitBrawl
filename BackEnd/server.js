@@ -28,7 +28,6 @@ const io = socketIo(server);
 io.on('connection', (socket) => {
   console.log('A player connected: ' + socket.id);
 
-  // Assign roles: first connection is A, second is B.
   if (!players['A']) {
     players['A'] = { socketId: socket.id, count: 0, ready: false };
     socket.role = 'A';
