@@ -184,49 +184,107 @@
       setInterval(sendLocalVideoFrame, 250);
     }
     
-    async function detectPose() {
-      if (!modelLoaded || !battleActive) return;
-      
-      // Create temporary canvas.
-      const tmpCanvas = document.createElement('canvas');
-      tmpCanvas.width = localVideo.videoWidth;
-      tmpCanvas.height = localVideo.videoHeight;
-      const tmpCtx = tmpCanvas.getContext('2d');
-      tmpCtx.drawImage(localVideo, 0, 0, tmpCanvas.width, tmpCanvas.height);
-      
-      const poses = await detector.estimatePoses(localVideo);
-      if (poses && poses.length > 0) {
-        const keypoints = poses[0].keypoints;
-        const leftShoulder = keypoints.find(kp => kp.name === "left_shoulder");
-        const leftElbow = keypoints.find(kp => kp.name === "left_elbow");
-        const leftWrist = keypoints.find(kp => kp.name === "left_wrist");
-        const rightShoulder = keypoints.find(kp => kp.name === "right_shoulder");
-        const rightElbow = keypoints.find(kp => kp.name === "right_elbow");
-        const rightWrist = keypoints.find(kp => kp.name === "right_wrist");
+
+
+
+
+
+
     
-        if (leftShoulder.score > 0.5 && leftElbow.score > 0.5 && leftWrist.score > 0.5 &&
-            rightShoulder.score > 0.5 && rightElbow.score > 0.5 && rightWrist.score > 0.5) {
-          const leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
-          const rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
-          const minAngle = Math.min(leftAngle, rightAngle);
-    
-          if (pushUpState === "up" && minAngle < downThreshold) {
-            pushUpState = "down";
-          }
-          if (pushUpState === "down" && minAngle > upThreshold) {
-            pushUpCount++;
-            localCountDisplay.innerText = "Push-Ups: " + pushUpCount;
-            playBeep();
-            pushUpState = "up";
-            socket.emit('playerAction', { count: pushUpCount });
-          }
-        }
-      }
-      if (battleActive) {
-        requestAnimationFrame(detectPose);
-      }
+    function detectPose(pose) {
+  let pushUpState = "up";  // Start with 'up' state
+  let pushUpCount = 0;
+  let minAngle = 0;  // Set your angle threshold for detection
+  let upThreshold = 90;  // Customize this threshold for the 'up' state
+  
+  // Assuming the pose data is updated continuously in the loop
+  if (pose) {
+    // Extract the angle of the arms (or relevant body parts) to determine 'up' and 'down' states
+    // This logic needs to be based on your pose detection and the angle calculation.
+    // For example, detect if the angle of the arm is between a threshold of 'up' and 'down'.
+
+    let angle = calculateArmAngle(pose);  // Replace with actual angle calculation logic
+
+    // Check if the angle is in the 'down' state and then increment push-up count
+    if (pushUpState === "up" && angle < minAngle) {
+      // We are in the 'down' state, now detect a push-up completion
+      pushUpState = "down";  // Transition to 'down' state
     }
     
+    // When the user pushes back to the 'up' state
+    if (pushUpState === "down" && angle > upThreshold) {
+      pushUpCount++;
+      localCountDisplay.innerText = "Push-Ups: " + pushUpCount;  // Update local counter
+      playBeep();  // Optional: You can add a sound to indicate a successful push-up
+      pushUpState = "up";  // Transition back to 'up' state after one full push-up
+
+      // Emit the updated push-up count to the server (if using socket)
+      socket.emit('playerAction', { count: pushUpCount });
+
+      // Update Firebase with the new push-up count, total, and max
+      updateFirebaseData(pushUpCount);
+    }
+  }
+}
+
+// Function to calculate the angle between two points (for arm detection)
+function calculateArmAngle(pose) {
+  // Implement the logic to calculate the angle between joints, e.g., the shoulder, elbow, and wrist
+  // This will depend on the pose model you are using and its output format.
+  // For example:
+  let shoulder = pose.keypoints.find(point => point.part === "shoulder");
+  let elbow = pose.keypoints.find(point => point.part === "elbow");
+  let wrist = pose.keypoints.find(point => point.part === "wrist");
+
+  if (shoulder && elbow && wrist) {
+    return calculateAngle(shoulder.position, elbow.position, wrist.position);
+  }
+  return 0;
+}
+
+// Helper function to calculate angle between three points (in degrees)
+function calculateAngle(point1, point2, point3) {
+  let angle = Math.atan2(point3.y - point2.y, point3.x - point2.x) - 
+              Math.atan2(point1.y - point2.y, point1.x - point2.x);
+  return Math.abs(angle * 180 / Math.PI);  // Convert to degrees
+}
+
+// Function to update Firebase with total and max push-ups
+async function updateFirebaseData(pushUpCount) {
+  try {
+    // Reference to the user's data in Firebase
+    const userRef = ref(realtimeDb, 'users/' + userUID);  // Replace 'userUID' with actual user ID
+    
+    // Fetch current user's data from Firebase
+    const userSnapshot = await get(userRef);
+    const userData = userSnapshot.val();
+    
+    // Update totalReps (cumulative total) and maxReps (highest push-up count in a single game)
+    let newTotalReps = userData.totalReps + pushUpCount;  // Increment total push-ups
+    let newMaxReps = Math.max(userData.maxReps, pushUpCount);  // Update max push-ups
+
+    // Update Firebase with the new values
+    await set(userRef, {
+      ...userData,  // Keep other user data intact
+      totalReps: newTotalReps,
+      maxReps: newMaxReps,
+    });
+
+    console.log('Push-up data updated in Firebase!');
+  } catch (error) {
+    console.error('Error updating push-up data in Firebase:', error);
+  }
+}
+
+
+
+
+
+
+
+
+
+
     function calculateAngle(A, B, C) {
       const AB = { x: A.x - B.x, y: A.y - B.y };
       const CB = { x: C.x - B.x, y: C.y - B.y };

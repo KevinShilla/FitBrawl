@@ -1,17 +1,20 @@
 // profile.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-import {getAuth,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-import {getFirestore,doc,getDoc} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";  // Firebase Realtime Database
+import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 
 // Firebase config (use your real config here)
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
+    apiKey: "AIzaSyAJI39HjB8F7irBAkRI5MPNn2AILIufTiU",
+    authDomain: "fitbrawl.firebaseapp.com",
+    projectId: "fitbrawl",
+    storageBucket: "fitbrawl.firebasestorage.app",
+    messagingSenderId: "584708689415",
+    appId: "1:584708689415:web:8ec4a241fee962df5ae4a2"
+  };
+  
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
