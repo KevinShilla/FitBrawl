@@ -48,6 +48,7 @@
     <button onclick="location.href='Home.html'">Home</button>
   </div>
   <script>
+    // Retrieve final push-up count from sessionStorage (set in pushups.html)
     const finalCount = sessionStorage.getItem("finalCount") || "N/A";
     document.getElementById("finalCount").innerText = finalCount;
 
