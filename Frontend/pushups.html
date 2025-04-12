@@ -15,10 +15,27 @@
       padding: 10px;
       background: #ddd;
     }
+    #battleTimerDisplay {
+      font-size: 36px;
+      margin: 10px;
+      color: #333;
+      transition: all 0.3s ease;
+    }
+    .intense {
+      animation: shake 0.5s infinite;
+      color: red;
+    }
+    @keyframes shake {
+      0% { transform: translate(0px, 0px); }
+      25% { transform: translate(5px, 0px); }
+      50% { transform: translate(0px, 5px); }
+      75% { transform: translate(-5px, 0px); }
+      100% { transform: translate(0px, -5px); }
+    }
     #container {
       display: flex;
       flex-direction: row;
-      height: calc(100vh - 80px);
+      height: calc(100vh - 120px);
     }
     .panel {
       flex: 1;
@@ -30,7 +47,6 @@
       border: 2px solid #000;
       background: #000;
     }
-    /* Using an image for opponent's snapshot */
     #remoteFeed {
       width: 90%;
       border: 2px solid #000;
@@ -46,6 +62,7 @@
   <div id="controls">
     <button id="readyButton">Ready</button>
     <div id="countdown"></div>
+    <div id="battleTimerDisplay"></div>
   </div>
   <div id="container">
     <div class="panel" id="localPanel">
@@ -79,6 +96,7 @@
     const upThreshold = 160;
     const beepAudio = new Audio('beep.mp3');
     let battleActive = false;
+    let battleTimeLeft = 30;
 
     document.getElementById('readyButton').addEventListener('click', () => {
       socket.emit('playerReady');
@@ -98,6 +116,7 @@
       document.getElementById('countdown').innerText = "";
       battleActive = true;
       startPushUpDetection();
+      startBattleTimer();
     });
 
     socket.on('updateScores', (data) => {
@@ -206,6 +225,26 @@
     socket.on('remoteFrame', (dataURL) => {
       remoteFeed.src = dataURL;
     });
+
+    function startBattleTimer() {
+      battleTimeLeft = 30;
+      const battleTimerInterval = setInterval(() => {
+        battleTimeLeft--;
+        const timerDisplay = document.getElementById('battleTimerDisplay');
+        timerDisplay.innerText = "Time Left: " + battleTimeLeft + "s";
+        if (battleTimeLeft <= 3 && battleTimeLeft > 0) {
+          timerDisplay.classList.add('intense');
+        }
+        
+        if (battleTimeLeft <= 0) {
+          clearInterval(battleTimerInterval);
+          timerDisplay.innerText = "STOP!";
+          setTimeout(() => {
+            timerDisplay.classList.remove('intense');
+          }, 1000);
+        }
+      }, 1000);
+    }
   </script>
 </body>
 </html>
