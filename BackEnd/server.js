@@ -1,11 +1,15 @@
 const express = require('express');
 const path = require('path');
-const http = require('http');
+const fs = require('fs');
+const https = require('https');
 const socketIo = require('socket.io');
 
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server);
+
+const options = {
+  key: fs.readFileSync(path.join(__dirname, '../certs/172.20.10.2-key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, '../certs/172.20.10.2.pem'))
+};
 
 app.use(express.static(path.join(__dirname, '../Frontend')));
 
@@ -18,9 +22,13 @@ let readyPlayers = 0;
 let battleStarted = false;
 let battleTimer = null;
 
+const server = https.createServer(options, app);
+const io = socketIo(server);
+
 io.on('connection', (socket) => {
   console.log('A player connected: ' + socket.id);
 
+  // Assign roles: first connection is A, second is B.
   if (!players['A']) {
     players['A'] = { socketId: socket.id, count: 0, ready: false };
     socket.role = 'A';
@@ -52,6 +60,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Receive a video snapshot and forward it to the opponent.
   socket.on('videoFrame', (data) => {
     if (socket.role === 'A' && players['B']) {
       io.to(players['B'].socketId).emit('remoteFrame', data);
@@ -97,7 +106,6 @@ function endBattle() {
     winner = 'Player B wins!';
   }
   io.emit('battleResult', { winner, scores: { A: countA, B: countB } });
-  // Reset state for the next battle
   players = {};
   readyPlayers = 0;
   battleStarted = false;
@@ -105,5 +113,5 @@ function endBattle() {
 
 const port = 3000;
 server.listen(port, () => {
-  console.log(`Server listening on http://localhost:${port}`);
+  console.log(`HTTPS server listening on https://172.20.10.2:${port}`);
 });

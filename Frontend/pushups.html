@@ -1,4 +1,3 @@
-<!-- Frontend/pushups.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,6 +30,12 @@
       border: 2px solid #000;
       background: #000;
     }
+    /* Using an image for opponent's snapshot */
+    #remoteFeed {
+      width: 90%;
+      border: 2px solid #000;
+      background: #000;
+    }
     #countdown {
       font-size: 48px;
       color: red;
@@ -50,7 +55,7 @@
     </div>
     <div class="panel" id="remotePanel">
       <h2>Opponent's Camera</h2>
-      <video id="remoteVideo" playsinline autoplay></video>
+      <img id="remoteFeed" alt="Opponent's Snapshot">
       <div id="remoteCount">Push-Ups: 0</div>
     </div>
   </div>
@@ -64,7 +69,7 @@
     let localRole = '';
     let detector;
     let localVideo = document.getElementById('localVideo');
-    let remoteVideo = document.getElementById('remoteVideo');
+    let remoteFeed = document.getElementById('remoteFeed');
     let localCountDisplay = document.getElementById('localCount');
     let remoteCountDisplay = document.getElementById('remoteCount');
     let pushUpCount = 0;
@@ -73,7 +78,7 @@
     const downThreshold = 90;
     const upThreshold = 160;
     const beepAudio = new Audio('beep.mp3');
-    let battleActive = false; 
+    let battleActive = false;
 
     document.getElementById('readyButton').addEventListener('click', () => {
       socket.emit('playerReady');
@@ -111,17 +116,22 @@
     });
 
     async function setupCamera() {
+      try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         localVideo.srcObject = stream;
         localVideo.play();
+      } catch (error) {
+        alert("Camera error: " + error);
+      }
     }
     setupCamera();
 
     async function loadPoseModel() {
       document.getElementById('countdown').innerText = "Loading model...";
-      detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, {
-        modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING
-      });
+      detector = await poseDetection.createDetector(
+        poseDetection.SupportedModels.MoveNet,
+        { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+      );
       modelLoaded = true;
       document.getElementById('countdown').innerText = "";
     }
@@ -194,7 +204,7 @@
     }
 
     socket.on('remoteFrame', (dataURL) => {
-      remoteVideo.src = dataURL;
+      remoteFeed.src = dataURL;
     });
   </script>
 </body>
