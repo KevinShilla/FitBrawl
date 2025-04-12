@@ -34,7 +34,7 @@
       border-radius: 4px;
       margin-top: 10px;
     }
-    /* Hide the video element as we only use it for the source */
+    
     #video {
       display: none;
     }
@@ -42,25 +42,29 @@
 </head>
 <body>
   <h1>Squat Counter</h1>
+  <p>This code creates a squat counter web page that uses your computer camera to monitor your exercise form and count the number of squats you perform. </p>
+  <p>When you click the start button, the page asks for access to your camera and begins displaying a hidden video feed (used for analysis) and a canvas </p>
+  <p>where it draws the video frames. It then loads a machine learning model that detects key parts of your body (like your hips, knees, and ankles) and </p>
+  <p>continuously calculates the angle at your knee. When the model sees that you squat down (the knee angle becomes small) and then stand back up (the knee </p>
+  <p>angle becomes large again), it increments your squat counter and plays a beep sound. The code also draws markers on your video image to help visualize the </p>
+  <p>detected body points, making it easier to see how the model is tracking your movements.</p>
   <button id="startButton">Start</button>
   <div id="message"></div>
   <div id="counter">Squats: 0</div>
   <video id="video" playsinline></video>
   <canvas id="canvas"></canvas>
 
-  <!-- TensorFlow.js and MoveNet pose detection -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
 
   <script>
     let detector, video, canvas, ctx;
     let squatCount = 0;
-    let squatState = "up"; // "up" means standing; "down" means squat position.
+    let squatState = "up";
     let modelLoaded = false;
-    // For squats, we use knee angles:
-    const downThreshold = 90;   // When knee angle is less than 90°, the person is squatting down.
-    const upThreshold = 160;    // When knee angle goes above 160°, the person has risen.
-    const beepAudio = new Audio('beep.mp3'); // Place beep.mp3 in your Frontend folder (or update the path).
+    const downThreshold = 90;
+    const upThreshold = 160;
+    const beepAudio = new Audio('beep.mp3');
 
     document.getElementById('startButton').addEventListener('click', startApp);
 
@@ -159,6 +163,7 @@
       beepAudio.currentTime = 0;
       beepAudio.play();
     }
+
   </script>
 </body>
 </html>
