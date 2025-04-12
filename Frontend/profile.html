@@ -1,21 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Profile</title>
-  <script src="firebase.js"></script> <!-- Include Firebase setup -->
-  <script src="profile.js"></script> <!-- Include the updated JavaScript -->
 </head>
 <body>
-  <div id="profile-container">
-    <h1>Welcome to Your Profile</h1>
-    <!-- Displaying username dynamically -->
-    <div id="username"></div>
-    <!-- Displaying total push-ups dynamically -->
-    <div id="totalReps">Total Push-Ups: 0</div>
-    <!-- Displaying max reps dynamically -->
-    <div id="maxReps">Max in One Match: 0</div>
-  </div>
+  <h1>Welcome, <span id="username">Loading...</span>!</h1>
+  <p>Total Reps: <span id="totalReps">0</span></p>
+  <p>Max Reps: <span id="maxReps">0</span></p>
+
+  <!-- Firebase SDKs and Your Script -->
+  <script type="module" src="profile.js"></script>
+
+  <button class="home-button" onclick="location.href='Home.html'">Home</button>
 </body>
 </html>
