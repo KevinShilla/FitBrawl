@@ -263,7 +263,7 @@
       const timerInterval = setInterval(() => {
         battleTimeLeft--;
         countdownDisplay.innerText = "Time Left: " + battleTimeLeft + "s";
-        if (battleTimeLeft <= 3 && battleTimeLeft > 0) {
+        if (battleTimeLeft <= 5 && battleTimeLeft > 0) {
           countdownDisplay.classList.add('intense');
           if (!countdownAudioPlayed) {
             countdownAudio.currentTime = 0;

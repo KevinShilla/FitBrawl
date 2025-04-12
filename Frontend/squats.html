@@ -13,21 +13,15 @@
       padding: 10px 20px;
       font-size: 16px;
       margin: 10px;
-      cursor: pointer;
     }
-    /* Connect Section styling */
-    #connectSection {
-      margin-bottom: 20px;
-    }
-    /* Video and Countdown Sections */
-    #videoSection {
-      margin-top: 20px;
-      display: none;
+    #playerStatus {
+      font-size: 18px;
+      margin: 10px;
     }
     #video {
       border: 1px solid #ccc;
-      display: block;
-      margin: 0 auto;
+      display: none;
+      margin-top: 20px;
     }
     #countdownDisplay {
       font-size: 40px;
@@ -39,106 +33,98 @@
       margin-top: 20px;
       display: none;
     }
-    /* Intense animation for the final countdown seconds */
-    .intense {
-      animation: shake 0.5s infinite;
-      color: red;
-    }
-    @keyframes shake {
-      0% { transform: translate(0px,0px); }
-      25% { transform: translate(5px,0px); }
-      50% { transform: translate(0px,5px); }
-      75% { transform: translate(-5px,0px); }
-      100% { transform: translate(0px,-5px); }
-    }
   </style>
 </head>
 <body>
   <h1>Multiplayer Squats</h1>
-  
-  <!-- Connect Section -->
-  <div id="connectSection">
-    <button id="connectButton">Connect</button>
-    <div id="playerCountDisplay">0/2</div>
-  </div>
-  
-  <!-- Ready Section (hidden until 2 players are connected) -->
-  <div id="readySection" style="display: none;">
+
+  <!-- Displays connected players -->
+  <div id="playerStatus">Players: 0/2</div>
+
+  <!-- Ready button; appears when 2 players are connected -->
+  <div id="readySection" style="display:none;">
     <button id="readyButton">Ready</button>
   </div>
-  
-  <!-- Video Section (each user sees their own camera feed) -->
-  <div id="videoSection" style="display: none;">
+
+  <!-- Camera feed: shows each user’s own video -->
+  <div id="videoSection" style="display:none;">
     <video id="video" playsinline autoplay muted width="320" height="240"></video>
   </div>
-  
-  <!-- Countdown Display -->
-  <div id="countdownDisplay" style="display: none;"></div>
-  
-  <!-- Squat Count Display -->
-  <div id="squatCountDisplay" style="display: none;">Squats: 0</div>
-  
+
+  <!-- Countdown display -->
+  <div id="countdownDisplay"></div>
+
+  <!-- Squat count display -->
+  <div id="squatCountDisplay">Squats: 0</div>
+
   <!-- Include Socket.io -->
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // ----- SOCKET.IO SETUP -----
+    // Automatically connect to the Socket.io server on page load.
     const socket = io();
 
-    // ----- UI ELEMENTS -----
-    const connectButton = document.getElementById("connectButton");
-    const playerCountDisplay = document.getElementById("playerCountDisplay");
-    const readySection = document.getElementById("readySection");
-    const readyButton = document.getElementById("readyButton");
-    const videoSection = document.getElementById("videoSection");
-    const videoElement = document.getElementById("video");
-    const countdownDisplay = document.getElementById("countdownDisplay");
-    const squatCountDisplay = document.getElementById("squatCountDisplay");
+    // UI elements
+    const playerStatus = document.getElementById('playerStatus');
+    const readySection = document.getElementById('readySection');
+    const readyButton = document.getElementById('readyButton');
+    const videoSection = document.getElementById('videoSection');
+    const videoElement = document.getElementById('video');
+    const countdownDisplay = document.getElementById('countdownDisplay');
+    const squatCountDisplay = document.getElementById('squatCountDisplay');
 
-    // ----- GAME STATE VARIABLES -----
     let localSquatCount = 0;
     let squatDetectionActive = false;
-    let squatInterval; // Placeholder for squat detection simulation
-    // Audio file for countdown (ensure countdown.mp3 is in your Frontend folder)
+    let squatInterval;
+
+    // Audio for countdown (ensure "countdown.mp3" exists in your file location)
     const countdownAudio = new Audio('countdown.mp3');
 
-    // ----- CONNECTION LOGIC -----
-    connectButton.addEventListener("click", () => {
-      socket.emit("playerConnect");
-      connectButton.disabled = true;
-    });
-
+    // ----- SOCKET.IO EVENTS -----
+    // Server sends current number of players.
     socket.on("updatePlayerCount", data => {
-      playerCountDisplay.innerText = data.count + "/2";
-      // When 2 players are connected, show the Ready button and video feed.
-      if (data.count === 2) {
+      playerStatus.innerText = "Players: " + data.count + "/2";
+      // When 2 players are connected, show the Ready button and start camera.
+      if(data.count === 2) {
         readySection.style.display = "block";
         videoSection.style.display = "block";
         startCamera();
+      } else {
+        readySection.style.display = "none";
       }
     });
 
-    // ----- READY LOGIC -----
+    // When a player clicks Ready.
     readyButton.addEventListener("click", () => {
       socket.emit("playerReady");
       readyButton.disabled = true;
       readyButton.innerText = "Waiting...";
     });
 
-    // When both players are ready, the server sends the "bothReady" event.
+    // Both players are ready; start countdown.
     socket.on("bothReady", () => {
       startCountdown();
     });
 
-    // ----- COUNTDOWN LOGIC -----
+    // Server sends game result after 30 seconds.
+    socket.on("gameResult", data => {
+      if(data.result === "winner") {
+        window.location.href = "winner.html";
+      } else {
+        window.location.href = "loser.html";
+      }
+    });
+
+    // ----- COUNTDOWN -----
     function startCountdown() {
       let count = 3;
       countdownDisplay.style.display = "block";
       countdownAudio.play();
-      const countdownTimer = setInterval(() => {
-        countdownDisplay.innerText = count > 0 ? count : "GO!";
+      const timer = setInterval(() => {
+        countdownDisplay.innerText = count;
         count--;
-        if (count < 0) {
-          clearInterval(countdownTimer);
+        if(count < 0) {
+          clearInterval(timer);
+          countdownDisplay.innerText = "GO!";
           setTimeout(() => {
             countdownDisplay.style.display = "none";
             startSquatGame();
@@ -147,43 +133,36 @@
       }, 1000);
     }
 
-    // ----- SQUAT DETECTION & TIMER (PLACEHOLDER) -----
+    // ----- SQUAT GAME LOGIC -----
+    // Start squat detection and a 30-second timer.
     function startSquatGame() {
-      // Hide Ready Section
       readySection.style.display = "none";
-      // Show squat count display
       squatCountDisplay.style.display = "block";
       localSquatCount = 0;
       squatCountDisplay.innerText = "Squats: " + localSquatCount;
       squatDetectionActive = true;
-      // Simulate squat detection (for demonstration, increment randomly every second)
+
+      // Placeholder for squat detection logic.
+      // Replace simulateSquat() with your real squat detection code.
       squatInterval = setInterval(simulateSquat, 1000);
-      // Start a 30-second timer; after 30 seconds, end the squat game.
+
+      // End game after 30 seconds.
       setTimeout(endSquatGame, 30000);
     }
 
+    // Placeholder simulation: randomly adds 0 or 1 squat per second.
     function simulateSquat() {
-      if (!squatDetectionActive) return;
-      localSquatCount += Math.floor(Math.random() * 3);
+      if(!squatDetectionActive) return;
+      localSquatCount += Math.floor(Math.random() * 2);
       squatCountDisplay.innerText = "Squats: " + localSquatCount;
     }
 
+    // End squat game and send count to server.
     function endSquatGame() {
       squatDetectionActive = false;
       clearInterval(squatInterval);
       socket.emit("squatCount", { count: localSquatCount });
     }
-
-    // ----- GAME RESULT LOGIC -----
-    // Server sends the game result with the final comparison.
-    socket.on("gameResult", data => {
-      sessionStorage.setItem("finalCount", data.finalCount);
-      if (data.result === "winner") {
-        window.location.href = "winner.html";
-      } else {
-        window.location.href = "loser.html";
-      }
-    });
 
     // ----- CAMERA FEED -----
     function startCamera() {
@@ -197,7 +176,7 @@
             console.error("Error accessing camera:", err);
           });
       } else {
-        console.error("getUserMedia not supported by your browser.");
+        console.error("Camera not supported.");
       }
     }
   </script>
