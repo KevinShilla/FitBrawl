@@ -159,7 +159,7 @@
     function startPushUpDetection() {
       if (!modelLoaded) return;
       detectPose();
-      setInterval(sendLocalVideoFrame, 1000);
+      setInterval(sendLocalVideoFrame, 200);
     }
 
     async function detectPose() {
@@ -235,7 +235,7 @@
         if (battleTimeLeft <= 3 && battleTimeLeft > 0) {
           timerDisplay.classList.add('intense');
         }
-        
+
         if (battleTimeLeft <= 0) {
           clearInterval(battleTimerInterval);
           timerDisplay.innerText = "STOP!";
