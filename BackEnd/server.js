@@ -7,8 +7,8 @@ const fs = require('fs');
 const app = express();
 
 const options = {
-  key: fs.readFileSync(path.join(__dirname, '../certs/172.20.10.2-key.pem')),
-  cert: fs.readFileSync(path.join(__dirname, '../certs/172.20.10.2.pem'))
+  key: fs.readFileSync(path.join(__dirname, '../certs/172.20.10.4-key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, '../certs/172.20.10.4.pem'))
 };
 
 app.use(express.static(path.join(__dirname, '../Frontend')));
@@ -113,5 +113,5 @@ function endBattle() {
 
 const port = 3000;
 server.listen(port, () => {
-  console.log(`HTTPS server listening on https://172.20.10.2:${port}`);
+  console.log(`HTTPS server listening on https://172.20.10.4:${port}`);
 });
