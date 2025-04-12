@@ -181,7 +181,7 @@
     function startPushUpDetection() {
       if (!modelLoaded) return;
       detectPose();
-      setInterval(sendLocalVideoFrame, 155);
+      setInterval(sendLocalVideoFrame, 250);
     }
     
     async function detectPose() {
