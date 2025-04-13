@@ -260,14 +260,17 @@
     });
     
     socket.on('battleResult', (data) => {
+      const localScore = localRole === 'A' ? data.scores.A : data.scores.B;
+      const remoteScore = localRole === 'A' ? data.scores.B : data.scores.A;
+    
       fetch('/update-stats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ squats: localScore })
-      });      
-      const localScore = localRole === 'A' ? data.scores.A : data.scores.B;
-      const remoteScore = localRole === 'A' ? data.scores.B : data.scores.A;
+      });
+    
       sessionStorage.setItem("finalCount", localScore);
+    
       if (localScore > remoteScore) {
         location.href = "winner.html";
       } else if (localScore < remoteScore) {
@@ -294,7 +297,6 @@
 
     function getBestVoice() {
     const voices = speechSynthesis.getVoices();
-    // Try a known good one (you can tweak based on browser)
     return voices.find(voice =>
     voice.name.includes("Google") ||
     voice.name.includes("Microsoft") ||
@@ -306,7 +308,7 @@
     function speak(text) {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.pitch = 1.2;
-    utterance.rate = 1; // make it slower if it's too fast
+    utterance.rate = 1; 
     utterance.voice = speechSynthesis.getVoices().find(v => v.lang === 'en-US');
     speechSynthesis.speak(utterance);
 }
