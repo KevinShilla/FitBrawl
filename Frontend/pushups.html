@@ -1,250 +1,176 @@
 <!DOCTYPE html>
- <html lang="en">
- <head>
-   <meta charset="UTF-8">
-   <title>FitBrawl - Push-Ups Battle</title>
-   <style>
-     body {
-       font-family: Arial, sans-serif;
-       background: #f0f0f0;
-       margin: 0;
-       padding: 0;
-     }
-     #controls {
-       text-align: center;
-       padding: 10px;
-       background: #ddd;
-     }
-     #battleTimerDisplay {
-       font-size: 36px;
-       margin: 10px;
-       color: #333;
-       transition: all 0.3s ease;
-     }
-     .intense {
-       animation: shake 0.5s infinite;
-       color: red;
-     }
-     @keyframes shake {
-       0% { transform: translate(0px, 0px); }
-       25% { transform: translate(5px, 0px); }
-       50% { transform: translate(0px, 5px); }
-       75% { transform: translate(-5px, 0px); }
-       100% { transform: translate(0px, -5px); }
-     }
-     #container {
-       display: flex;
-       flex-direction: row;
-       height: calc(100vh - 120px);
-     }
-     .panel {
-       flex: 1;
-       padding: 10px;
-       text-align: center;
-     }
-     video {
-       width: 90%;
-       border: 2px solid #000;
-       background: #000;
-     }
-     #remoteFeed {
-       width: 90%;
-       border: 2px solid #000;
-       background: #000;
-     }
-     #countdown {
-       font-size: 48px;
-       color: red;
-     }
-   </style>
- </head>
- <body>
-   <div id="controls">
-     <button id="readyButton">Ready</button>
-     <div id="countdown"></div>
-     <div id="battleTimerDisplay"></div>
-   </div>
-   <div id="container">
-     <div class="panel" id="localPanel">
-       <h2>Your Camera (<span id="roleDisplay"></span>)</h2>
-       <video id="localVideo" playsinline autoplay muted></video>
-       <div id="localCount">Push-Ups: 0</div>
-     </div>
-     <div class="panel" id="remotePanel">
-       <h2>Opponent's Camera</h2>
-       <img id="remoteFeed" alt="Opponent's Snapshot">
-       <div id="remoteCount">Push-Ups: 0</div>
-     </div>
-   </div>
- 
-   <script src="/socket.io/socket.io.js"></script>
-   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
-   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
- 
-   <script>
-     const socket = io();
-     let localRole = '';
-     let detector;
-     let localVideo = document.getElementById('localVideo');
-     let remoteFeed = document.getElementById('remoteFeed');
-     let localCountDisplay = document.getElementById('localCount');
-     let remoteCountDisplay = document.getElementById('remoteCount');
-     let pushUpCount = 0;
-     let pushUpState = "up";
-     let modelLoaded = false;
-     const downThreshold = 90;
-     const upThreshold = 160;
-     const beepAudio = new Audio('beep.mp3');
-     let battleActive = false;
-     let battleTimeLeft = 30;
- 
-     document.getElementById('readyButton').addEventListener('click', () => {
-       socket.emit('playerReady');
-       document.getElementById('readyButton').disabled = true;
-     });
- 
-     socket.on('assignRole', (role) => {
-       localRole = role;
-       document.getElementById('roleDisplay').innerText = role;
-     });
- 
-     socket.on('startCountdown', (number) => {
-       document.getElementById('countdown').innerText = number > 0 ? number : "GO!";
-     });
- 
-     socket.on('startBattle', () => {
-       document.getElementById('countdown').innerText = "";
-       battleActive = true;
-       startPushUpDetection();
-       startBattleTimer();
-     });
- 
-     socket.on('updateScores', (data) => {
-       localCountDisplay.innerText = "Push-Ups: " + (localRole === 'A' ? data.A : data.B);
-       remoteCountDisplay.innerText = "Push-Ups: " + (localRole === 'A' ? data.B : data.A);
-     });
- 
-     socket.on('battleResult', (data) => {
-       alert("Battle Over! " + data.winner + "\nScores - Player A: " + data.scores.A + " | Player B: " + data.scores.B);
-       location.reload();
-     });
- 
-     socket.on('battleCancelled', () => {
-       alert("Battle cancelled. A player disconnected.");
-       location.reload();
-     });
- 
-     async function setupCamera() {
-       try {
-         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-         localVideo.srcObject = stream;
-         localVideo.play();
-       } catch (error) {
-         alert("Camera error: " + error);
-       }
-     }
-     setupCamera();
- 
-     async function loadPoseModel() {
-       document.getElementById('countdown').innerText = "Loading model...";
-       detector = await poseDetection.createDetector(
-         poseDetection.SupportedModels.MoveNet,
-         { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
-       );
-       modelLoaded = true;
-       document.getElementById('countdown').innerText = "";
-     }
-     loadPoseModel();
- 
-     function startPushUpDetection() {
-       if (!modelLoaded) return;
-       detectPose();
-       setInterval(sendLocalVideoFrame, 225);
-     }
- 
-     async function detectPose() {
-       if (!modelLoaded || !battleActive) return;
- 
-       const poses = await detector.estimatePoses(localVideo);
-       if (poses && poses.length > 0) {
-         const keypoints = poses[0].keypoints;
-         const leftShoulder = keypoints.find(kp => kp.name === "left_shoulder");
-         const leftElbow = keypoints.find(kp => kp.name === "left_elbow");
-         const leftWrist = keypoints.find(kp => kp.name === "left_wrist");
-         const rightShoulder = keypoints.find(kp => kp.name === "right_shoulder");
-         const rightElbow = keypoints.find(kp => kp.name === "right_elbow");
-         const rightWrist = keypoints.find(kp => kp.name === "right_wrist");
- 
-         if (leftShoulder.score > 0.5 && leftElbow.score > 0.5 && leftWrist.score > 0.5 &&
-             rightShoulder.score > 0.5 && rightElbow.score > 0.5 && rightWrist.score > 0.5) {
-           const leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
-           const rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
-           const minAngle = Math.min(leftAngle, rightAngle);
-           if (pushUpState === "up" && minAngle < downThreshold) {
-             pushUpState = "down";
-           }
-           if (pushUpState === "down" && minAngle > upThreshold) {
-             pushUpCount++;
-             localCountDisplay.innerText = "Push-Ups: " + pushUpCount;
-             playBeep();
-             pushUpState = "up";
-             socket.emit('playerAction', { count: pushUpCount });
-           }
-         }
-       }
-       if (battleActive) {
-         requestAnimationFrame(detectPose);
-       }
-     }
- 
-     function calculateAngle(A, B, C) {
-       const AB = { x: A.x - B.x, y: A.y - B.y };
-       const CB = { x: C.x - B.x, y: C.y - B.y };
-       const dot = (AB.x * CB.x + AB.y * CB.y);
-       const magAB = Math.sqrt(AB.x ** 2 + AB.y ** 2);
-       const magCB = Math.sqrt(CB.x ** 2 + CB.y ** 2);
-       const angleRad = Math.acos(dot / (magAB * magCB));
-       return angleRad * (180 / Math.PI);
-     }
- 
-     function playBeep() {
-       beepAudio.currentTime = 0;
-       beepAudio.play();
-     }
- 
-     function sendLocalVideoFrame() {
-       const canvas = document.createElement('canvas');
-       canvas.width = localVideo.videoWidth;
-       canvas.height = localVideo.videoHeight;
-       const ctx = canvas.getContext('2d');
-       ctx.drawImage(localVideo, 0, 0, canvas.width, canvas.height);
-       const dataURL = canvas.toDataURL('image/jpeg', 0.5);
-       socket.emit('videoFrame', dataURL);
-     }
- 
-     socket.on('remoteFrame', (dataURL) => {
-       remoteFeed.src = dataURL;
-     });
- 
-     function startBattleTimer() {
-       battleTimeLeft = 30;
-       const battleTimerInterval = setInterval(() => {
-         battleTimeLeft--;
-         const timerDisplay = document.getElementById('battleTimerDisplay');
-         timerDisplay.innerText = "Time Left: " + battleTimeLeft + "s";
-         if (battleTimeLeft <= 3 && battleTimeLeft > 0) {
-           timerDisplay.classList.add('intense');
-         }
- 
-         if (battleTimeLeft <= 0) {
-           clearInterval(battleTimerInterval);
-           timerDisplay.innerText = "STOP!";
-           setTimeout(() => {
-             timerDisplay.classList.remove('intense');
-           }, 1000);
-         }
-       }, 1000);
-     }
-   </script>
- </body>
- </html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FitBrawl - Push-Ups Battle</title>
+  <style>
+    body { font-family: Arial; background: #f0f0f0; margin: 0; padding: 0; }
+    #controls { text-align: center; padding: 10px; background: #ddd; }
+    #countdown { font-size: 48px; color: red; }
+    #battleTimerDisplay { font-size: 36px; margin: 10px; color: #333; }
+    .intense { animation: shake 0.5s infinite; color: red; }
+    @keyframes shake {
+      0% {transform: translate(0,0);} 25% {transform: translate(5px,0);}
+      50% {transform: translate(0,5px);} 75% {transform: translate(-5px,0);}
+      100% {transform: translate(0,-5px);}
+    }
+    #container { display: flex; height: calc(100vh - 120px); }
+    .panel { flex: 1; padding: 10px; text-align: center; }
+    video, canvas, img { width: 90%; border: 2px solid #000; background: #000; }
+    canvas { display: none; } /* hidden drawing canvas */
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button id="readyButton">Ready</button>
+    <div id="countdown"></div>
+    <div id="battleTimerDisplay"></div>
+  </div>
+  <div id="container">
+    <div class="panel">
+      <h2>Your Camera (<span id="roleDisplay"></span>)</h2>
+      <video id="localVideo" playsinline autoplay muted></video>
+      <canvas id="drawCanvas"></canvas>
+      <div id="localCount">Push-Ups: 0</div>
+    </div>
+    <div class="panel">
+      <h2>Opponent's Camera</h2>
+      <img id="remoteFeed" alt="Opponent's Snapshot">
+      <div id="remoteCount">Push-Ups: 0</div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+
+  <script>
+    const socket = io();
+    let localRole = '';
+    let detector, modelLoaded = false;
+    const downThreshold = 90, upThreshold = 160;
+    const beepAudio = new Audio('beep.mp3');
+    let battleActive = false, pushUpCount = 0, pushUpState = 'up';
+    const localVideo = document.getElementById('localVideo');
+    const drawCanvas = document.getElementById('drawCanvas');
+    const ctx = drawCanvas.getContext('2d');
+    const localCountDisplay = document.getElementById('localCount');
+    const remoteCountDisplay = document.getElementById('remoteCount');
+    const countdownDisplay = document.getElementById('countdown');
+    const battleTimerDisplay = document.getElementById('battleTimerDisplay');
+
+    async function setupCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        localVideo.srcObject = stream;
+        await localVideo.play();
+        drawCanvas.width = localVideo.videoWidth;
+        drawCanvas.height = localVideo.videoHeight;
+      } catch (e) {
+        alert('Camera error: ' + e);
+      }
+    }
+    setupCamera();
+
+    async function loadModel() {
+      countdownDisplay.innerText = 'Loading model...';
+      detector = await poseDetection.createDetector(
+        poseDetection.SupportedModels.MoveNet,
+        { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+      );
+      modelLoaded = true;
+      countdownDisplay.innerText = '';
+    }
+    loadModel();
+
+    // 3) Socket handlers
+    document.getElementById('readyButton').onclick = () => {
+      socket.emit('playerReady');
+      document.getElementById('readyButton').disabled = true;
+    };
+    socket.on('assignRole', r => {
+      localRole = r;
+      document.getElementById('roleDisplay').innerText = r;
+    });
+    socket.on('startCountdown', n => {
+      countdownDisplay.innerText = n > 0 ? n : 'GO!';
+    });
+    socket.on('startBattle', () => {
+      countdownDisplay.innerText = '';
+      battleActive = true;
+      startDetection();
+      startBattleTimer();
+    });
+    socket.on('updateScores', d => {
+      localCountDisplay.innerText = 'Push-Ups: ' + (localRole==='A'?d.A:d.B);
+      remoteCountDisplay.innerText = 'Push-Ups: ' + (localRole==='A'?d.B:d.A);
+    });
+
+    // 4) Detection loop
+    function startDetection() {
+      if (!modelLoaded) return;
+      requestAnimationFrame(detectPose);
+      setInterval(sendFrame, 200);
+    }
+    async function detectPose() {
+      if (!battleActive) return;
+      // draw video to canvas
+      ctx.drawImage(localVideo, 0, 0, drawCanvas.width, drawCanvas.height);
+      // estimate poses from canvas
+      const poses = await detector.estimatePoses(drawCanvas);
+      if (poses.length) {
+        const k = poses[0].keypoints;
+        const ls = k.find(p=>p.name==='left_shoulder'),
+              le = k.find(p=>p.name==='left_elbow'),
+              lw = k.find(p=>p.name==='left_wrist'),
+              rs = k.find(p=>p.name==='right_shoulder'),
+              re = k.find(p=>p.name==='right_elbow'),
+              rw = k.find(p=>p.name==='right_wrist');
+        if ([ls,le,lw,rs,re,rw].every(p=>p.score>0.5)) {
+          const angle = Math.min(
+            calculateAngle(ls,le,lw),
+            calculateAngle(rs,re,rw)
+          );
+          console.log('angle', angle, 'state', pushUpState);
+          if (pushUpState==='up' && angle<downThreshold) {
+            pushUpState='down';
+          }
+          if (pushUpState==='down' && angle>upThreshold) {
+            pushUpCount++;
+            localCountDisplay.innerText = 'Push-Ups: '+pushUpCount;
+            beepAudio.play();
+            pushUpState='up';
+            socket.emit('playerAction',{count:pushUpCount});
+          }
+        }
+      }
+      requestAnimationFrame(detectPose);
+    }
+    function calculateAngle(A,B,C){
+      const AB={x:A.x-B.x,y:A.y-B.y}, CB={x:C.x-B.x,y:C.y-B.y};
+      const dot=AB.x*CB.x+AB.y*CB.y,
+            magAB=Math.hypot(AB.x,AB.y),
+            magCB=Math.hypot(CB.x,CB.y);
+      return Math.acos(dot/(magAB*magCB))*180/Math.PI;
+    }
+
+    // 5) Frame to opponent
+    function sendFrame(){
+      const tmp=document.createElement('canvas');
+      tmp.width=drawCanvas.width; tmp.height=drawCanvas.height;
+      tmp.getContext('2d').drawImage(localVideo,0,0,tmp.width,tmp.height);
+      socket.emit('videoFrame', tmp.toDataURL('image/jpeg',0.5));
+    }
+    socket.on('remoteFrame', d=>document.getElementById('remoteFeed').src=d);
+
+    // 6) Battle timer
+    function startBattleTimer(){
+      let t=30;
+      const iv=setInterval(()=>{
+        t--; battleTimerDisplay.innerText='Time Left: '+t+'s';
+        if (t<=0){ clearInterval(iv); battleTimerDisplay.innerText='STOP!'; }
+      },1000);
+    }
+  </script>
+</body>
+</html>
