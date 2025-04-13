@@ -2,183 +2,306 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Multiplayer Squats</title>
+  <title>FitBrawl - Squats Battle</title>
   <style>
     body {
       font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+    #remoteFeed {
+      width: 90%;
+      border: 2px solid #000;
+      background: #000;
+    }    
+    #controls {
       text-align: center;
-      margin: 20px;
+      padding: 10px;
+      background: #ddd;
     }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      margin: 10px;
+    #countdown {
+      font-size: 48px;
+      color: red;
+      margin-top: 10px;
     }
-    #playerStatus {
-      font-size: 18px;
-      margin: 10px;
+    #container {
+      display: flex;
+      flex-direction: row;
+      height: calc(100vh - 160px);
     }
-    #video {
-      border: 1px solid #ccc;
-      display: none;
-      margin-top: 20px;
+    .panel {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
     }
-    #countdownDisplay {
-      font-size: 40px;
-      margin-top: 20px;
-      display: none;
+    video {
+      width: 90%;
+      border: 2px solid #000;
+      background: #000;
     }
-    #squatCountDisplay {
-      font-size: 24px;
-      margin-top: 20px;
-      display: none;
+    
+    /* Intense effect for final seconds */
+    .intense {
+      animation: shake 0.5s infinite;
+      color: red;
+    }
+    @keyframes shake {
+      0% { transform: translate(0px, 0px); }
+      25% { transform: translate(5px, 0px); }
+      50% { transform: translate(0px, 5px); }
+      75% { transform: translate(-5px, 0px); }
+      100% { transform: translate(0px, -5px); }
     }
   </style>
 </head>
 <body>
-  <h1>Multiplayer Squats</h1>
-
-  <!-- Displays connected players -->
-  <div id="playerStatus">Players: 0/2</div>
-
-  <!-- Ready button; appears when 2 players are connected -->
-  <div id="readySection" style="display:none;">
+  <div id="controls">
     <button id="readyButton">Ready</button>
+    <div id="countdown"> </div>
+  </div>
+  <div id="container">
+    <div class="panel" id="localPanel">
+      <h2>Your Camera (<span id="roleDisplay"></span>)</h2>
+      <video id="localVideo" playsinline autoplay muted></video>
+      <div id="localCount">Squats: 0</div>
+    </div>
+    <div class="panel" id="remotePanel">
+      <h2>Opponent's Camera</h2>
+      <img id="remoteFeed" alt="Opponent's Snapshot">
+      <div id="remoteCount">Squats: 0</div>
+    </div>
   </div>
 
-  <!-- Camera feed: shows each user’s own video -->
-  <div id="videoSection" style="display:none;">
-    <video id="video" playsinline autoplay muted width="320" height="240"></video>
-  </div>
-
-  <!-- Countdown display -->
-  <div id="countdownDisplay"></div>
-
-  <!-- Squat count display -->
-  <div id="squatCountDisplay">Squats: 0</div>
-
-  <!-- Include Socket.io -->
+  <!-- Include Socket.IO and TensorFlow.js (for pose detection) -->
   <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+
   <script>
-    // Automatically connect to the Socket.io server on page load.
+    // SOCKET SETUP
     const socket = io();
+    let localRole = '';
+    
+    socket.on('connect', () => {
+      sendLocalVideoFrame();
+      setInterval(sendLocalVideoFrame, 250);
+    });
 
-    // UI elements
-    const playerStatus = document.getElementById('playerStatus');
-    const readySection = document.getElementById('readySection');
+    socket.on('updatePlayerCount', data => {
+      if (data.count === 2) {
+        document.getElementById('localVideo').style.display = 'block';
+      }
+    });
+
+    // UI Elements
+    const localVideo = document.getElementById('localVideo');
+    const remoteFeed = document.getElementById('remoteFeed');
+    const localCountDisplay = document.getElementById('localCount');
+    const remoteCountDisplay = document.getElementById('remoteCount');
+    const countdownDisplay = document.getElementById('countdown');
     const readyButton = document.getElementById('readyButton');
-    const videoSection = document.getElementById('videoSection');
-    const videoElement = document.getElementById('video');
-    const countdownDisplay = document.getElementById('countdownDisplay');
-    const squatCountDisplay = document.getElementById('squatCountDisplay');
+    
+    // Squat detection variables
+    let squatCount = 0;
+    let squatState = "up";  // "up" when standing; becomes "down" when knees flex
+    let modelLoaded = false;
+    // Set thresholds for squat detection (adjust as needed)
+    const squatDownThreshold = 100;  // when knee angle is less than or equal to this, considered squat down
+    const squatUpThreshold = 160;    // when knee angle rises above this, count a squat
+    const beepAudio = new Audio('beep.mp3');  // Beep sound for each squat
+    const countdownAudio = new Audio('countdown.mp3'); // Audio played with the countdown
 
-    let localSquatCount = 0;
-    let squatDetectionActive = false;
-    let squatInterval;
-
-    // Audio for countdown (ensure "countdown.mp3" exists in your file location)
-    const countdownAudio = new Audio('countdown.mp3');
-
-    // ----- SOCKET.IO EVENTS -----
-    // Server sends current number of players.
-    socket.on("updatePlayerCount", data => {
-      playerStatus.innerText = "Players: " + data.count + "/2";
-      // When 2 players are connected, show the Ready button and start camera.
-      if(data.count === 2) {
-        readySection.style.display = "block";
-        videoSection.style.display = "block";
-        startCamera();
-      } else {
-        readySection.style.display = "none";
+    // Battle control variables
+    let battleActive = false;
+    let battleTimeLeft = 30;
+    let countdownAudioPlayed = false;
+    
+    // Pose detection model
+    let detector;
+    
+    // START CAMERA ON LOAD
+    async function setupCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        localVideo.srcObject = stream;
+        localVideo.play();
+      } catch (error) {
+        alert("Camera error: " + error);
       }
-    });
+    }
+    setupCamera();
 
-    // When a player clicks Ready.
-    readyButton.addEventListener("click", () => {
-      socket.emit("playerReady");
+    // LOAD POSE DETECTION MODEL (MoveNet)
+    async function loadPoseModel() {
+      countdownDisplay.innerText = "Loading model...";
+      detector = await poseDetection.createDetector(
+        poseDetection.SupportedModels.MoveNet,
+        { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+      );
+      modelLoaded = true;
+      countdownDisplay.innerText = "";
+    }
+    loadPoseModel();
+    
+    // READY BUTTON HANDLER
+    readyButton.addEventListener('click', () => {
+      // Optionally play a sound here for feedback.
+      socket.emit('playerReady');
       readyButton.disabled = true;
-      readyButton.innerText = "Waiting...";
     });
-
-    // Both players are ready; start countdown.
-    socket.on("bothReady", () => {
-      startCountdown();
+    
+    // SOCKET EVENTS
+    socket.on('assignRole', (role) => {
+      localRole = role;
+      document.getElementById('roleDisplay').innerText = role;
     });
-
-    // Server sends game result after 30 seconds.
-    socket.on("gameResult", data => {
-      if(data.result === "winner") {
-        window.location.href = "winner.html";
+    
+    socket.on('startCountdown', (number) => {
+      countdownDisplay.innerText = number > 0 ? number : "GO!";
+    });
+    
+    // When battle starts, both players begin at the same time
+    socket.on('startBattle', () => {
+      countdownDisplay.innerText = "";
+      battleActive = true;
+      // Both cameras should already be on; start squat detection and battle timer
+      startSquatDetection();
+      startBattleTimer();
+    });
+    
+    socket.on('updateScores', (data) => {
+      // Update local and remote squat scores as per assigned roles.
+      localCountDisplay.innerText = "Squats: " + (localRole === 'A' ? data.A : data.B);
+      remoteCountDisplay.innerText = "Squats: " + (localRole === 'A' ? data.B : data.A);
+    });
+    
+    socket.on('battleResult', (data) => {
+      const localScore = localRole === 'A' ? data.scores.A : data.scores.B;
+      const remoteScore = localRole === 'A' ? data.scores.B : data.scores.A;
+      sessionStorage.setItem("finalCount", localScore);
+      if (localScore > remoteScore) {
+        location.href = "winner.html";
+      } else if (localScore < remoteScore) {
+        location.href = "loser.html";
       } else {
-        window.location.href = "loser.html";
+        // In case of tie, you might want to redirect to a tie page or declare a winner.
+        location.href = "winner.html";
       }
     });
+    
+    socket.on('battleCancelled', () => {
+      alert("Battle cancelled. A player disconnected.");
+      location.reload();
+    });
+    
+    socket.on('remoteFrame', (dataURL) => {
+      document.getElementById('remoteFeed').src = dataURL;
+    });
+    
+    // SQUAT DETECTION
+    function startSquatDetection() {
+      if (!modelLoaded) return;
+      detectSquatPose();
+      setInterval(sendLocalVideoFrame, 250);  // Send periodic snapshots to update remote view.
+    }
+    
+    async function detectSquatPose() {
+      if (!modelLoaded || !battleActive) return;
+      
+      // Estimate the pose from the local video feed.
+      const poses = await detector.estimatePoses(localVideo);
+      
+      if (poses && poses.length > 0) {
+        const keypoints = poses[0].keypoints;
+        // Get relevant keypoints for squat detection.
+        const leftHip = keypoints.find(kp => kp.name === "left_hip");
+        const leftKnee = keypoints.find(kp => kp.name === "left_knee");
+        const leftAnkle = keypoints.find(kp => kp.name === "left_ankle");
+        const rightHip = keypoints.find(kp => kp.name === "right_hip");
+        const rightKnee = keypoints.find(kp => kp.name === "right_knee");
+        const rightAnkle = keypoints.find(kp => kp.name === "right_ankle");
 
-    // ----- COUNTDOWN -----
-    function startCountdown() {
-      let count = 3;
-      countdownDisplay.style.display = "block";
-      countdownAudio.play();
-      const timer = setInterval(() => {
-        countdownDisplay.innerText = count;
-        count--;
-        if(count < 0) {
-          clearInterval(timer);
-          countdownDisplay.innerText = "GO!";
+        // Ensure keypoints are detected with sufficient confidence.
+        if (leftHip && leftKnee && leftAnkle && rightHip && rightKnee && rightAnkle &&
+            leftHip.score > 0.5 && leftKnee.score > 0.5 && leftAnkle.score > 0.5 &&
+            rightHip.score > 0.5 && rightKnee.score > 0.5 && rightAnkle.score > 0.5) {
+
+          // Calculate knee angles for both legs.
+          const leftKneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
+          const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
+          const minKneeAngle = Math.min(leftKneeAngle, rightKneeAngle);
+          
+          // Detection logic: when going "down" (squat) and then back "up"
+          if (squatState === "up" && minKneeAngle <= squatDownThreshold) {
+            squatState = "down";
+          }
+          if (squatState === "down" && minKneeAngle > squatUpThreshold) {
+            squatCount++;
+            localCountDisplay.innerText = "Squats: " + squatCount;
+            playBeep();
+            squatState = "up";
+            socket.emit('playerAction', { count: squatCount });
+          }
+        }
+      }
+      if (battleActive) {
+        requestAnimationFrame(detectSquatPose);
+      }
+    }
+    
+    // Helper: calculates the angle (in degrees) between three points.
+    function calculateAngle(A, B, C) {
+      const AB = { x: A.x - B.x, y: A.y - B.y };
+      const CB = { x: C.x - B.x, y: C.y - B.y };
+      const dot = AB.x * CB.x + AB.y * CB.y;
+      const magAB = Math.sqrt(AB.x ** 2 + AB.y ** 2);
+      const magCB = Math.sqrt(CB.x ** 2 + CB.y ** 2);
+      const angleRad = Math.acos(dot / (magAB * magCB));
+      return angleRad * (180 / Math.PI);
+    }
+    
+    function playBeep() {
+      beepAudio.currentTime = 0;
+      beepAudio.play();
+    }
+    
+    // Send local video frame snapshot to the server for the remote feed.
+    function sendLocalVideoFrame() {
+      const tmpCanvas = document.createElement('canvas');
+      tmpCanvas.width = localVideo.videoWidth;
+      tmpCanvas.height = localVideo.videoHeight;
+      const tmpCtx = tmpCanvas.getContext('2d');
+      tmpCtx.drawImage(localVideo, 0, 0, tmpCanvas.width, tmpCanvas.height);
+      const dataURL = tmpCanvas.toDataURL('image/jpeg', 0.5);
+      socket.emit('videoFrame', dataURL);
+    }
+    
+    // BATTLE TIMER: 30-second countdown for the squat battle.
+    function startBattleTimer() {
+      battleTimeLeft = 30;
+      countdownAudioPlayed = false;
+      const timerInterval = setInterval(() => {
+        battleTimeLeft--;
+        countdownDisplay.innerText = "Time Left: " + battleTimeLeft + "s";
+        if (battleTimeLeft <= 5 && battleTimeLeft > 0) {
+          countdownDisplay.classList.add('intense');
+          if (!countdownAudioPlayed) {
+            countdownAudio.currentTime = 0;
+            countdownAudio.play();
+            countdownAudioPlayed = true;
+          }
+        }
+        if (battleTimeLeft <= 0) {
+          clearInterval(timerInterval);
+          countdownDisplay.innerText = "STOP!";
           setTimeout(() => {
-            countdownDisplay.style.display = "none";
-            startSquatGame();
+            countdownDisplay.classList.remove('intense');
           }, 1000);
         }
       }, 1000);
     }
-
-    // ----- SQUAT GAME LOGIC -----
-    // Start squat detection and a 30-second timer.
-    function startSquatGame() {
-      readySection.style.display = "none";
-      squatCountDisplay.style.display = "block";
-      localSquatCount = 0;
-      squatCountDisplay.innerText = "Squats: " + localSquatCount;
-      squatDetectionActive = true;
-
-      // Placeholder for squat detection logic.
-      // Replace simulateSquat() with your real squat detection code.
-      squatInterval = setInterval(simulateSquat, 1000);
-
-      // End game after 30 seconds.
-      setTimeout(endSquatGame, 30000);
-    }
-
-    // Placeholder simulation: randomly adds 0 or 1 squat per second.
-    function simulateSquat() {
-      if(!squatDetectionActive) return;
-      localSquatCount += Math.floor(Math.random() * 2);
-      squatCountDisplay.innerText = "Squats: " + localSquatCount;
-    }
-
-    // End squat game and send count to server.
-    function endSquatGame() {
-      squatDetectionActive = false;
-      clearInterval(squatInterval);
-      socket.emit("squatCount", { count: localSquatCount });
-    }
-
-    // ----- CAMERA FEED -----
-    function startCamera() {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: true })
-          .then(stream => {
-            videoElement.srcObject = stream;
-            videoElement.play();
-          })
-          .catch(err => {
-            console.error("Error accessing camera:", err);
-          });
-      } else {
-        console.error("Camera not supported.");
-      }
-    }
   </script>
+  <script src="profile.js"></script>
 </body>
 </html>

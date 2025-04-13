@@ -251,7 +251,6 @@ async function updateFirebaseData(pushUpCount) {
     const userSnapshot = await get(userRef);
     const userData = userSnapshot.val();
     
-    // Update totalReps (cumulative total) and maxReps (highest push-up count in a single game)
     let newTotalReps = userData.totalReps + pushUpCount;  // Increment total push-ups
     let newMaxReps = Math.max(userData.maxReps, pushUpCount);  // Update max push-ups
 
