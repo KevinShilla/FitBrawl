@@ -2,50 +2,68 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FitBrawl - Winner!</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #d1ffd1;
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #a8ff78, #78ffd6);
       text-align: center;
       margin: 0;
       padding: 20px;
+      color: #333;
     }
     h1 {
-      font-size: 72px;
+      font-size: 80px;
       font-weight: bold;
-      color: green;
+      color: #28a745;
       margin-top: 40px;
+      text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
     }
     h2 {
-      font-size: 36px;
+      font-size: 40px;
       margin-top: 20px;
+      color: #555;
     }
     #cameraFeed {
       width: 80%;
       max-width: 600px;
-      border: 2px solid #000;
+      border: 5px solid #28a745;
+      border-radius: 10px;
       background: #000;
       margin-top: 20px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     }
     .button-group {
       margin-top: 30px;
     }
     button {
-      padding: 10px 20px;
-      font-size: 18px;
+      padding: 15px 30px;
+      font-size: 20px;
       margin: 10px;
       cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      background: #28a745;
+      color: #fff;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+    button:hover {
+      background: #218838;
+      transform: scale(1.05);
+    }
+    button:active {
+      transform: scale(0.95);
     }
   </style>
 </head>
 <body>
-  <h1>WINNER!</h1>
+  <h1>🎉 WINNER! 🎉</h1>
   <h2>Push-Ups: <span id="finalCount">0</span></h2>
   <video id="cameraFeed" playsinline autoplay muted></video>
   <div class="button-group">
-    <button onclick="location.href='profile.html'">Profile</button>
-    <button onclick="location.href='Home.html'">Home</button>
+    <button onclick="location.href='profile.html'">Go to Profile</button>
+    <button onclick="location.href='Home.html'">Return Home</button>
   </div>
   <script>
     // Retrieve final push-up count from sessionStorage (set in pushups.html)
