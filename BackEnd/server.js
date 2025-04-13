@@ -1,5 +1,5 @@
 const express = require('express');
-// const https = require('https');
+const https = require('https');
 const socketIo = require('socket.io');
 const path = require('path');
 const fs = require('fs');
@@ -46,12 +46,12 @@ db.run(`ALTER TABLE users ADD COLUMN planks INTEGER DEFAULT 0`, (err) => {
 });
 
 
-/*
+
 const options = {
   key: fs.readFileSync(path.join(__dirname, '../certs/172.20.10.4-key.pem')),
   cert: fs.readFileSync(path.join(__dirname, '../certs/172.20.10.4.pem'))
 };
-*/
+
 app.use(express.static(path.join(__dirname, '../Frontend')));
 
 app.get('/', (req, res) => {
@@ -72,7 +72,8 @@ app.post('/signup', (req, res) => {
       return res.status(400).send('User already exists or input error.');
     }
     console.log('New user created with ID:', this.lastID);
-    res.send('Signup successful! Go back and login.');
+    res.send('Signup successful! <button onclick="window.location.href=\'index.html\'">Go back and login</button>');
+    
   });
 });
 
@@ -137,11 +138,7 @@ let readyPlayers = 0;
 let battleStarted = false;
 let battleTimer = null;
 
-// const server = https.createServer(options, app);
-
-//const io = socketIo(server);
-const http = require('http');
-const server = http.createServer(app);
+const server = https.createServer(options, app);
 const io = socketIo(server);
 
 io.on('connection', (socket) => {
@@ -257,14 +254,9 @@ app.get('/api/leaderboard', (req, res) => {
   });
 });
 
-/*
+
 const port = 3000;
 server.listen(port, () => {
   console.log(`HTTPS server listening on https://172.20.10.4:${port}`);
-});
-*/
-const port = 3000;
-server.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
 });
 
