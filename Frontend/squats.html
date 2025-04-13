@@ -73,7 +73,6 @@
     </div>
   </div>
 
-  <!-- Include Socket.IO and TensorFlow.js (for pose detection) -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
@@ -186,22 +185,19 @@
       document.getElementById('remoteFeed').src = dataURL;
     });
     
-    // SQUAT DETECTION
     function startSquatDetection() {
       if (!modelLoaded) return;
       detectSquatPose();
-      setInterval(sendLocalVideoFrame, 250);  // Send periodic snapshots to update remote view.
+      setInterval(sendLocalVideoFrame, 250);
     }
     
     async function detectSquatPose() {
       if (!modelLoaded || !battleActive) return;
       
-      // Estimate the pose from the local video feed.
       const poses = await detector.estimatePoses(localVideo);
       
       if (poses && poses.length > 0) {
         const keypoints = poses[0].keypoints;
-        // Get relevant keypoints for squat detection.
         const leftHip = keypoints.find(kp => kp.name === "left_hip");
         const leftKnee = keypoints.find(kp => kp.name === "left_knee");
         const leftAnkle = keypoints.find(kp => kp.name === "left_ankle");
@@ -209,17 +205,14 @@
         const rightKnee = keypoints.find(kp => kp.name === "right_knee");
         const rightAnkle = keypoints.find(kp => kp.name === "right_ankle");
 
-        // Ensure keypoints are detected with sufficient confidence.
         if (leftHip && leftKnee && leftAnkle && rightHip && rightKnee && rightAnkle &&
             leftHip.score > 0.5 && leftKnee.score > 0.5 && leftAnkle.score > 0.5 &&
             rightHip.score > 0.5 && rightKnee.score > 0.5 && rightAnkle.score > 0.5) {
 
-          // Calculate knee angles for both legs.
           const leftKneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
           const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
           const minKneeAngle = Math.min(leftKneeAngle, rightKneeAngle);
           
-          // Detection logic: when going "down" (squat) and then back "up"
           if (squatState === "up" && minKneeAngle <= squatDownThreshold) {
             squatState = "down";
           }
