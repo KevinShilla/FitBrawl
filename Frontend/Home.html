@@ -3,69 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>FitBrawl - Choose Your Workout</title>
-  <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      text-align: center;
-      margin: 0;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
-      color: #fff;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
-    h1 {
-      margin-top: 0;
-      font-size: 4rem;
-      text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
-      animation: fadeIn 2s ease-in-out;
-    }
-    p {
-      font-size: 1.8rem;
-      margin-bottom: 40px;
-      animation: fadeIn 2.5s ease-in-out;
-    }
-    .workout-button {
-      padding: 15px 40px;
-      font-size: 1.5rem;
-      margin: 20px;
-      cursor: pointer;
-      border: none;
-      border-radius: 30px;
-      background: linear-gradient(135deg, #ff7e5f, #feb47b);
-      color: #fff;
-      font-weight: bold;
-      box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
-      transition: transform 0.3s, box-shadow 0.3s, background 0.3s;
-    }
-    .workout-button:hover {
-      transform: scale(1.15);
-      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.4);
-      background: linear-gradient(135deg, #feb47b, #ff7e5f);
-    }
-    .workout-button:active {
-      transform: scale(1.1);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    }
-    footer {
-      margin-top: 50px;
-      font-size: 1rem;
-      color: rgba(255, 255, 255, 0.8);
-      animation: fadeIn 3s ease-in-out;
-    }
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="css/Home.css">
+  <nav>
+    <ul style="list-style-type: none; display: flex; gap: 20px; padding: 0; margin: 0; background-color: #f4f4f4; border-bottom: 1px solid #ccc;">
+      <li><a href="Home.html" style="text-decoration: none; color: #333; padding: 10px 15px; display: block;">Home</a></li>
+      <li><a href="profile.html" style="text-decoration: none; color: #333; padding: 10px 15px; display: block;">Profile</a></li>
+    </ul>
+  </nav>
 </head>
 <body>
   <h1>Welcome to FitBrawl</h1>
