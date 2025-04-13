@@ -126,7 +126,6 @@
     }
     loadPoseModel();
     
-    // When "Ready" is clicked, tell the server.
     document.getElementById('readyButton').addEventListener('click', () => {
       countdownAudio.play();
       socket.emit('playerReady');
@@ -201,18 +200,15 @@
 
     let angle = calculateArmAngle(pose);  // Replace with actual angle calculation logic
 
-    // Check if the angle is in the 'down' state and then increment push-up count
     if (pushUpState === "up" && angle < minAngle) {
-      // We are in the 'down' state, now detect a push-up completion
       pushUpState = "down";  // Transition to 'down' state
     }
     
-    // When the user pushes back to the 'up' state
     if (pushUpState === "down" && angle > upThreshold) {
       pushUpCount++;
-      localCountDisplay.innerText = "Push-Ups: " + pushUpCount;  // Update local counter
-      playBeep();  // Optional: You can add a sound to indicate a successful push-up
-      pushUpState = "up";  // Transition back to 'up' state after one full push-up
+      localCountDisplay.innerText = "Push-Ups: " + pushUpCount;
+      playBeep(); 
+      pushUpState = 
 
       // Emit the updated push-up count to the server (if using socket)
       socket.emit('playerAction', { count: pushUpCount });
@@ -310,7 +306,6 @@ async function updateFirebaseData(pushUpCount) {
       remoteFeed.src = dataURL;
     });
     
-    // Start battle timer (30s) with countdown.mp3 played when time is 3 seconds or less.
     function startBattleTimer() {
       battleTimeLeft = 30;
       countdownAudioPlayed = false;
