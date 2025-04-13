@@ -10,6 +10,7 @@
       margin: 0;
       padding: 0;
     }
+    /* Controls (Ready button, countdown, battle timer) */
     #controls {
       text-align: center;
       padding: 10px;
@@ -20,6 +21,7 @@
       color: red;
       margin-top: 10px;
     }
+    /* Container for the two panels */
     #container {
       display: flex;
       flex-direction: row;
@@ -35,6 +37,7 @@
       border: 2px solid #000;
       background: #000;
     }
+    /* Intense effect for final seconds */
     .intense {
       animation: shake 0.5s infinite;
       color: red;
@@ -66,36 +69,51 @@
       <div id="remoteCount">Jabs: 0</div>
     </div>
   </div>
-  
+
+  <!-- Include Socket.IO and TensorFlow.js (for pose detection) -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
   
   <script>
+    // === SOCKET.IO SETUP ===
     const socket = io();
     let localRole = '';
-    
+    // Start sending frames immediately on connection to update the opponent’s view
     socket.on('connect', () => {
       sendLocalVideoFrame();
       setInterval(sendLocalVideoFrame, 250);
     });
-    
-    socket.on('remoteFrame', (dataURL) => {
+    socket.on('remoteFrame', dataURL => {
       document.getElementById('remoteFeed').src = dataURL;
     });
-    
+    socket.on('updatePlayerCount', data => {
+      // Optionally, show/hide local video based on connected players
+      if(data.count === 2) {
+        // You might reveal additional UI here
+      }
+    });
+
+    // === GLOBAL STATE VARIABLES ===
     let detector, modelLoaded = false;
     let battleActive = false;
     let battleTimeLeft = 30;
+    let countdownAudioPlayed = false;
     
     let punchCount = 0;
+    // For punching, we use the right arm. We define a state:
+    // "retracted" means the arm is not extended, "extended" means a jab motion
     let punchState = "retracted";
-    const extendThreshold = 160;   
-    const retractThreshold = 100;   
+    // Thresholds for the elbow angle (in degrees):
+    // When the arm is extended, the angle is near 180.
+    // When retracted it may be around 90.
+    const extendThreshold = 160;
+    const retractThreshold = 100;
     
     const beepAudio = new Audio('beep.mp3');
     const countdownAudio = new Audio('countdown.mp3');
-    
+
+    // === UI ELEMENTS ===
     const localVideo = document.getElementById('localVideo');
     const remoteFeed = document.getElementById('remoteFeed');
     const localCountDisplay = document.getElementById('localCount');
@@ -104,18 +122,19 @@
     const readyButton = document.getElementById('readyButton');
     const countdownDisplay = document.getElementById('countdown');
     const battleTimerDisplay = document.getElementById('battleTimerDisplay');
-    
+
+    // === CAMERA & MODEL SETUP ===
     async function setupCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         localVideo.srcObject = stream;
         await localVideo.play();
-      } catch (error) {
-        alert("Camera error: " + error);
+      } catch (err) {
+        alert("Camera error: " + err);
       }
     }
     setupCamera();
-    
+
     async function loadPoseModel() {
       countdownDisplay.innerText = "Loading model...";
       detector = await poseDetection.createDetector(
@@ -126,48 +145,48 @@
       countdownDisplay.innerText = "";
     }
     loadPoseModel();
-    
+
+    // === READY & SYNCED START ===
     readyButton.addEventListener('click', () => {
       countdownAudio.play();
       socket.emit('playerReady');
       readyButton.disabled = true;
     });
-    
-    socket.on('assignRole', (role) => {
+    socket.on('assignRole', role => {
       localRole = role;
       roleDisplay.innerText = role;
     });
-    
-    socket.on('startCountdown', (number) => {
-      countdownDisplay.innerText = number > 0 ? number : "GO!";
+    socket.on('startCountdown', num => {
+      countdownDisplay.innerText = num > 0 ? num : "GO!";
     });
-    
+    // Use a sync start strategy: server sends a startTime timestamp
     socket.on('startBattle', ({ startTime }) => {
       const delay = startTime - Date.now();
       countdownDisplay.innerText = "Starting in " + Math.ceil(delay / 1000) + "s";
       setTimeout(() => {
         countdownDisplay.innerText = "";
         battleActive = true;
+        // Start the detection and timer simultaneously
         detectPose();
         startBattleTimer();
       }, delay);
     });
-    
-    socket.on('updateScores', (data) => {
+
+    socket.on('updateScores', data => {
       localCountDisplay.innerText = "Jabs: " + (localRole === 'A' ? data.A : data.B);
       remoteCountDisplay.innerText = "Jabs: " + (localRole === 'A' ? data.B : data.A);
     });
-    
-    socket.on('battleResult', (data) => {
-      alert("Battle Over!\nWinner: " + data.winner + "\nScores - Player A: " + data.scores.A + " | Player B: " + data.scores.B);
+    socket.on('battleResult', data => {
+      // For simplicity, alert the result and reload the page. Adjust as needed.
+      alert("Battle Over! Winner: " + data.winner + "\nScores - Player A: " + data.scores.A + " | Player B: " + data.scores.B);
       location.reload();
     });
-    
     socket.on('battleCancelled', () => {
       alert("Battle cancelled. A player disconnected.");
       location.reload();
     });
-    
+
+    // === FRAME SENDING FOR OPPONENT FEED ===
     function sendLocalVideoFrame() {
       const canvas = document.createElement('canvas');
       canvas.width = localVideo.videoWidth;
@@ -177,17 +196,22 @@
       const dataURL = canvas.toDataURL('image/jpeg', 0.5);
       socket.emit('videoFrame', dataURL);
     }
-    
+
+    // === PUNCH DETECTION (Using right arm elbow angle) ===
     async function detectPose() {
       if (!modelLoaded || !battleActive) return;
       const poses = await detector.estimatePoses(localVideo);
       if (poses && poses.length > 0) {
         const keypoints = poses[0].keypoints;
+        // Use right arm keypoints for jab detection:
         const rightShoulder = keypoints.find(kp => kp.name === "right_shoulder");
         const rightElbow = keypoints.find(kp => kp.name === "right_elbow");
         const rightWrist = keypoints.find(kp => kp.name === "right_wrist");
+        
+        // Check confidence
         if (rightShoulder.score > 0.5 && rightElbow.score > 0.5 && rightWrist.score > 0.5) {
           const elbowAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
+          // Simple state machine: when retracted then extended then retracted counts as one jab.
           if (punchState === "retracted" && elbowAngle > extendThreshold) {
             punchState = "extended";
           }
@@ -203,7 +227,8 @@
       }
       requestAnimationFrame(detectPose);
     }
-    
+
+    // Calculate angle between three points (in degrees)
     function calculateAngle(A, B, C) {
       const AB = { x: A.x - B.x, y: A.y - B.y };
       const CB = { x: C.x - B.x, y: C.y - B.y };
@@ -213,7 +238,8 @@
       const angleRad = Math.acos(dot / (magAB * magCB));
       return angleRad * (180 / Math.PI);
     }
-    
+
+    // === BATTLE TIMER (30 seconds) ===
     function startBattleTimer() {
       battleTimeLeft = 30;
       const timerInterval = setInterval(() => {
