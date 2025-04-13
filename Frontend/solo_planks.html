@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plank Detection</title>
+  <style>
+    body { font-family: Arial; background: #f0f0f0; margin: 0; padding: 0; }
+    #controls { text-align: center; padding: 10px; background: #ddd; }
+    #timer { font-size: 48px; color: green; }
+    #container { display: flex; justify-content: center; padding: 20px; }
+    .panel { text-align: center; position: relative; }
+    video, canvas { width: 400px; height: 300px; border: 2px solid #000; background: #000; position: absolute; top: 0; left: 0; }
+    canvas { display: block; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button id="startButton">Start Plank</button>
+    <div id="timer">0.00</div>
+  </div>
+  <div id="container">
+    <div class="panel">
+      <h2>Your Camera</h2>
+      <video id="localVideo" playsinline autoplay muted></video>
+      <canvas id="drawCanvas"></canvas>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+  <script>
+    let detector, modelLoaded = false;
+    let plankTimer = 0;
+    let isInPlank = false;
+    let startTime = 0;
+    let isPlanking = false;
+    let startPressed = false;
+    let timerInterval;
+    const localVideo = document.getElementById('localVideo');
+    const drawCanvas = document.getElementById('drawCanvas');
+    const ctx = drawCanvas.getContext('2d');
+    const timerDisplay = document.getElementById('timer');
+    const startButton = document.getElementById('startButton');
+
+    // Set up the camera with debugging logs
+    async function setupCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        localVideo.srcObject = stream;
+        await localVideo.play();
+        console.log("Camera successfully started.");
+        drawCanvas.width = 400; // Adjusted to fit the smaller video size
+        drawCanvas.height = 300; // Adjusted to fit the smaller video size
+      } catch (e) {
+        console.error('Error accessing camera:', e);
+        alert('Camera error: ' + e);
+      }
+    }
+    setupCamera();
+
+    // Load the pose detection model
+    async function loadModel() {
+      detector = await poseDetection.createDetector(
+        poseDetection.SupportedModels.MoveNet,
+        { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+      );
+      modelLoaded = true;
+    }
+    loadModel();
+
+    // Start the plank timer
+    function startPlankTimer() {
+      isPlanking = true;
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        plankTimer = (Date.now() - startTime) / 1000;
+        timerDisplay.innerText = plankTimer.toFixed(2);
+      }, 100);
+    }
+
+    // Stop the plank timer
+    function stopPlankTimer() {
+      isPlanking = false;
+      clearInterval(timerInterval);
+    }
+
+    // Detect plank pose
+    async function detectPose() {
+      if (!modelLoaded || !startPressed) return;
+
+      // Draw video to canvas
+      ctx.drawImage(localVideo, 0, 0, drawCanvas.width, drawCanvas.height);
+      
+      // Estimate poses from canvas
+      const poses = await detector.estimatePoses(drawCanvas);
+      if (poses.length) {
+        const keypoints = poses[0].keypoints;
+        const head = keypoints.find(p => p.name === 'nose');
+        const leftShoulder = keypoints.find(p => p.name === 'left_shoulder');
+        const rightShoulder = keypoints.find(p => p.name === 'right_shoulder');
+        const leftHip = keypoints.find(p => p.name === 'left_hip');
+        const rightHip = keypoints.find(p => p.name === 'right_hip');
+        const leftKnee = keypoints.find(p => p.name === 'left_knee');
+        const rightKnee = keypoints.find(p => p.name === 'right_knee');
+        const leftAnkle = keypoints.find(p => p.name === 'left_ankle');
+        const rightAnkle = keypoints.find(p => p.name === 'right_ankle');
+
+        // Debugging: draw keypoints on the canvas
+        keypoints.forEach(point => {
+          if (point.score > 0.5) {
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = 'red';
+            ctx.fill();
+          }
+        });
+
+        if ([head, leftShoulder, rightShoulder, leftHip, rightHip, leftKnee, rightKnee, leftAnkle, rightAnkle].every(p => p.score > 0.5)) {
+          const bodyStraight = checkPlankPosition(leftShoulder, rightShoulder, leftHip, rightHip, leftKnee, rightKnee, leftAnkle, rightAnkle);
+          if (bodyStraight) {
+            if (!isInPlank) {
+              isInPlank = true;
+              startPlankTimer();
+            }
+          } else {
+            if (isInPlank) {
+              isInPlank = false;
+              stopPlankTimer();
+            }
+          }
+        }
+      }
+
+      requestAnimationFrame(detectPose);
+    }
+
+    // Check if the body is straight (for plank position)
+    function checkPlankPosition(leftShoulder, rightShoulder, leftHip, rightHip, leftKnee, rightKnee, leftAnkle, rightAnkle) {
+      // Calculate angles between body segments to determine if body is aligned
+      const shoulderAngle = calculateAngle(leftShoulder, rightShoulder, leftHip, rightHip);
+      const hipAngle = calculateAngle(leftHip, rightHip, leftKnee, rightKnee);
+      const kneeAngle = calculateAngle(leftKnee, rightKnee, leftAnkle, rightAnkle);
+
+      // If the angles are close to straight, the person is in plank
+      return shoulderAngle > 160 && shoulderAngle < 180 && hipAngle > 160 && hipAngle < 180 && kneeAngle > 160 && kneeAngle < 180;
+    }
+
+    // Calculate the angle between three points
+    function calculateAngle(A, B, C, D) {
+      const AB = { x: A.x - B.x, y: A.y - B.y };
+      const CD = { x: C.x - D.x, y: C.y - D.y };
+      const dot = AB.x * CD.x + AB.y * CD.y;
+      const magAB = Math.hypot(AB.x, AB.y);
+      const magCD = Math.hypot(CD.x, CD.y);
+      return Math.acos(dot / (magAB * magCD)) * (180 / Math.PI);
+    }
+
+    // Start or stop the plank timer on button click
+    startButton.onclick = () => {
+      if (!startPressed) {
+        startPressed = true;
+        startButton.innerText = 'Stop Plank';
+      } else {
+        startPressed = false;
+        stopPlankTimer();
+        startButton.innerText = 'Start Plank';
+      }
+    };
+
+    // Start pose detection
+    async function startDetection() {
+      if (!modelLoaded) return;
+      requestAnimationFrame(detectPose);
+    }
+    startDetection();
+  </script>
+</body>
+</html>

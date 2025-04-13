@@ -2,42 +2,119 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Push-Up Counter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
+      font-family: 'Roboto', sans-serif;
       margin: 0;
-      background: #f0f0f0;
+      padding: 0;
+      background: linear-gradient(135deg, #1E1E1E, #121212);
+      color: #FFFFFF;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
     }
-    h1 {
-      margin-top: 20px;
+    header {
+      width: 100%;
+      background: #FF3B3B;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     }
-    #startButton {
+    header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0;
+    }
+    header .logo img {
+      width: 40px;
+      height: 40px;
+    }
+    header .actions button {
+      background-color: #FFFFFF;
+      color: #FF3B3B;
+      border: none;
       padding: 10px 20px;
-      font-size: 16px;
-      margin: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 4px;
       cursor: pointer;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    header .actions button:hover {
+      background-color: #FF3B3B;
+      color: #FFFFFF;
+    }
+    #controls {
+      margin-top: 20px;
+      text-align: center;
+    }
+    #controls button {
+      background: linear-gradient(135deg, #FF3B3B, #D32F2F);
+      color: #FFFFFF;
+      border: none;
+      padding: 14px 28px;
+      font-size: 18px;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #controls button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 8px rgba(255, 59, 59, 0.5);
     }
     #counter {
-      font-size: 20px;
-      margin: 10px;
+      margin-top: 20px;
+      font-size: 32px;
+      font-weight: 700;
+      color: #FF3B3B;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     }
     #message {
-      font-size: 18px;
-      color: green;
-      height: 24px;
-      margin-bottom: 10px;
-    }
-    #video, #canvas {
-      border: 2px solid #ccc;
-      border-radius: 4px;
       margin-top: 10px;
+      font-size: 18px;
+      font-weight: 500;
+      color: #FFFFFF;
+      text-align: center;
     }
-    #video {
-      display: none;
+    #timer {
+      margin-top: 10px;
+      font-size: 24px;
+      font-weight: 700;
+      color: #FF3B3B;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    video, canvas {
+      margin-top: 20px;
+      width: 80%;
+      max-width: 600px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 14px;
+      color: #888888;
+      text-align: center;
+    }
+    footer a {
+      color: #FF3B3B;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    footer a:hover {
+      text-decoration: underline;
     }
   </style>
+</head>
+
 </head>
 <body>
   <h1>Push-Up Counter</h1>
