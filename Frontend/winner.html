@@ -58,15 +58,14 @@
   </style>
 </head>
 <body>
-  <h1>🎉 WINNER! 🎉</h1>
-  <h2>Push-Ups: <span id="finalCount">0</span></h2>
+  <h1>WINNER!</h1>
+  <h2>Count: <span id="finalCount">0</span></h2>
   <video id="cameraFeed" playsinline autoplay muted></video>
   <div class="button-group">
     <button onclick="location.href='profile.html'">Go to Profile</button>
     <button onclick="location.href='Home.html'">Return Home</button>
   </div>
   <script>
-    // Retrieve final push-up count from sessionStorage (set in pushups.html)
     const finalCount = sessionStorage.getItem("finalCount") || "N/A";
     document.getElementById("finalCount").innerText = finalCount;
 

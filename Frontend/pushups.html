@@ -7,8 +7,7 @@
     body {
       font-family: Arial, sans-serif;
       background: #f0f0f0;
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
     }
     #controls {
       text-align: center;
@@ -22,43 +21,28 @@
     }
     #container {
       display: flex;
-      flex-direction: row;
       height: calc(100vh - 160px);
     }
     .panel {
-      flex: 1;
-      padding: 10px;
-      text-align: center;
+      flex: 1; padding: 10px; text-align: center;
     }
-    video {
+    video, img {
       width: 90%;
       border: 2px solid #000;
       background: #000;
     }
-    /* Opponent's feed is shown as an image */
-    #remoteFeed {
-      width: 90%;
-      border: 2px solid #000;
-      background: #000;
-    }
-    /* Intense effect for final seconds */
     .intense {
       animation: shake 0.5s infinite;
       color: red;
     }
     @keyframes shake {
-      0% { transform: translate(0px, 0px); }
-      25% { transform: translate(5px, 0px); }
-      50% { transform: translate(0px, 5px); }
-      75% { transform: translate(-5px, 0px); }
-      100% { transform: translate(0px, -5px); }
+      0% { transform: translate(0,0) }
+      25% { transform: translate(5px,0) }
+      50% { transform: translate(0,5px) }
+      75% { transform: translate(-5px,0) }
+      100% { transform: translate(0,-5px) }
     }
   </style>
-
-
-
-
-
 </head>
 <body>
   <div id="controls">
@@ -66,12 +50,12 @@
     <div id="countdown"></div>
   </div>
   <div id="container">
-    <div class="panel" id="localPanel">
+    <div class="panel">
       <h2>Your Camera (<span id="roleDisplay"></span>)</h2>
-      <video id="localVideo" playsinline autoplay muted></video>
+      <video id="localVideo" playsinline autoplay muted style="display:none"></video>
       <div id="localCount">Push-Ups: 0</div>
     </div>
-    <div class="panel" id="remotePanel">
+    <div class="panel">
       <h2>Opponent's Camera</h2>
       <img id="remoteFeed" alt="Opponent's Snapshot">
       <div id="remoteCount">Push-Ups: 0</div>
@@ -81,250 +65,185 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
-
   <script>
+    // —————————————————————————————————————————
+    // SOCKET.IO SETUP
     const socket = io();
+
+    // Send frames immediately so remote feed shows up before Ready
+    socket.on('connect', () => {
+      sendLocalVideoFrame();
+      setInterval(sendLocalVideoFrame, 250);
+    });
+
+    // —————————————————————————————————————————
+    // GLOBAL STATE
     let localRole = '';
-    let detector;
+    let detector, modelLoaded = false;
+    let battleActive = false;
+    let battleTimeLeft = 30;
+    let countdownAudioPlayed = false;
+
+    let pushUpCount = 0;
+    let pushUpState = 'up';
+    const downThreshold = 90;
+    const upThreshold = 160;
+
+    const beepAudio = new Audio('beep.mp3');
+    const countdownAudio = new Audio('countdown.mp3');
+
+    // —————————————————————————————————————————
+    // UI ELEMENTS
     const localVideo = document.getElementById('localVideo');
     const remoteFeed = document.getElementById('remoteFeed');
     const localCountDisplay = document.getElementById('localCount');
     const remoteCountDisplay = document.getElementById('remoteCount');
     const countdownDisplay = document.getElementById('countdown');
-    let pushUpCount = 0;
-    let pushUpState = "up";
-    let modelLoaded = false;
-    const downThreshold = 90;
-    const upThreshold = 160;
-    const beepAudio = new Audio('beep.mp3');
-    const countdownAudio = new Audio('countdown.mp3'); 
-    let battleActive = false;
-    let battleTimeLeft = 30;
-    let countdownAudioPlayed = false;
-    
-    // Start the local camera immediately so the feed shows.
+    const readyButton = document.getElementById('readyButton');
+
+    // —————————————————————————————————————————
+    // CAMERA & MODEL
     async function setupCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         localVideo.srcObject = stream;
-        localVideo.play();
-      } catch (error) {
-        alert("Camera error: " + error);
+        await localVideo.play();
+      } catch (e) {
+        alert('Camera error: ' + e);
       }
     }
     setupCamera();
-    
-    // Load the MoveNet model.
-    async function loadPoseModel() {
-      countdownDisplay.innerText = "Loading model...";
+
+    async function loadModel() {
+      countdownDisplay.innerText = 'Loading model...';
       detector = await poseDetection.createDetector(
         poseDetection.SupportedModels.MoveNet,
         { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
       );
       modelLoaded = true;
-      countdownDisplay.innerText = "";
+      countdownDisplay.innerText = '';
     }
-    loadPoseModel();
-    
-    document.getElementById('readyButton').addEventListener('click', () => {
+    loadModel();
+
+    // —————————————————————————————————————————
+    // READY & SYNCED START
+    readyButton.addEventListener('click', () => {
       countdownAudio.play();
       socket.emit('playerReady');
-      document.getElementById('readyButton').disabled = true;
+      readyButton.disabled = true;
     });
-    
-    socket.on('assignRole', (role) => {
+
+    socket.on('assignRole', role => {
       localRole = role;
       document.getElementById('roleDisplay').innerText = role;
     });
-    
-    socket.on('startCountdown', (number) => {
-      countdownDisplay.innerText = number > 0 ? number : "GO!";
+
+    socket.on('startCountdown', num => {
+      countdownDisplay.innerText = num > 0 ? num : 'GO!';
     });
-    
-    // When the battle starts, clear countdown, start push-up detection and timer.
-    socket.on('startBattle', () => {
-      countdownDisplay.innerText = "";
-      battleActive = true;
-      startPushUpDetection();
-      startBattleTimer();
+
+    socket.on('startBattle', ({ startTime }) => {
+      const delay = startTime - Date.now();
+      countdownDisplay.innerText = 'Starting in ' + Math.ceil(delay/1000) + 's';
+      setTimeout(() => {
+        countdownDisplay.innerText = '';
+        battleActive = true;
+        localVideo.style.display = 'block';
+        detectPose();
+        startBattleTimer();
+      }, delay);
     });
-    
-    socket.on('updateScores', (data) => {
-      localCountDisplay.innerText = "Push-Ups: " + (localRole === 'A' ? data.A : data.B);
-      remoteCountDisplay.innerText = "Push-Ups: " + (localRole === 'A' ? data.B : data.A);
-    });
-    
-    // When the battle result is received, store the final count and redirect.
-    socket.on('battleResult', (data) => {
-      const localScore = localRole === 'A' ? data.scores.A : data.scores.B;
-      const remoteScore = localRole === 'A' ? data.scores.B : data.scores.A;
-      sessionStorage.setItem("finalCount", localScore);
-      if (localScore > remoteScore) {
-        location.href = "winner.html";
-      } else if (localScore < remoteScore) {
-        location.href = "loser.html";
-      } else {
-        location.href = "winner.html"; // In case of tie.
-      }
 
 
-
+    socket.on('updateScores', data => {
+      localCountDisplay.innerText = 'Push-Ups: ' +
+        (localRole==='A'? data.A : data.B);
+      remoteCountDisplay.innerText = 'Push-Ups: ' +
+        (localRole==='A'? data.B : data.A);
     });
-    
+
+    socket.on('battleResult', data => {
+      const a = data.scores.A, b = data.scores.B;
+      const localScore = localRole==='A'? a : b;
+      const remoteScore= localRole==='A'? b : a;
+      sessionStorage.setItem('finalCount', localScore);
+      location.href = localScore>=remoteScore? 'winner.html':'loser.html';
+    });
+
     socket.on('battleCancelled', () => {
-      alert("Battle cancelled. A player disconnected.");
+      alert('Battle cancelled.');
       location.reload();
     });
-    
-    // Push-up detection.
-    function startPushUpDetection() {
-      if (!modelLoaded) return;
-      detectPose();
-      setInterval(sendLocalVideoFrame, 250);
-    }
-    
 
-
-
-
-
-
-    
-    function detectPose(pose) {
-  let pushUpState = "up";  // Start with 'up' state
-  let pushUpCount = 0;
-  let minAngle = 0;  // Set your angle threshold for detection
-  let upThreshold = 90;  // Customize this threshold for the 'up' state
-  
-  if (pose) {
-
-    let angle = calculateArmAngle(pose);  // Replace with actual angle calculation logic
-
-    if (pushUpState === "up" && angle < minAngle) {
-      pushUpState = "down";  // Transition to 'down' state
-    }
-    
-    if (pushUpState === "down" && angle > upThreshold) {
-      pushUpCount++;
-      localCountDisplay.innerText = "Push-Ups: " + pushUpCount;
-      playBeep(); 
-      pushUpState = 
-
-      // Emit the updated push-up count to the server (if using socket)
-      socket.emit('playerAction', { count: pushUpCount });
-
-      // Update Firebase with the new push-up count, total, and max
-      updateFirebaseData(pushUpCount);
-    }
-  }
-}
-
-// Function to calculate the angle between two points (for arm detection)
-function calculateArmAngle(pose) {
-  // Implement the logic to calculate the angle between joints, e.g., the shoulder, elbow, and wrist
-  // This will depend on the pose model you are using and its output format.
-  // For example:
-  let shoulder = pose.keypoints.find(point => point.part === "shoulder");
-  let elbow = pose.keypoints.find(point => point.part === "elbow");
-  let wrist = pose.keypoints.find(point => point.part === "wrist");
-
-  if (shoulder && elbow && wrist) {
-    return calculateAngle(shoulder.position, elbow.position, wrist.position);
-  }
-  return 0;
-}
-
-// Helper function to calculate angle between three points (in degrees)
-function calculateAngle(point1, point2, point3) {
-  let angle = Math.atan2(point3.y - point2.y, point3.x - point2.x) - 
-              Math.atan2(point1.y - point2.y, point1.x - point2.x);
-  return Math.abs(angle * 180 / Math.PI);  // Convert to degrees
-}
-
-// Function to update Firebase with total and max push-ups
-async function updateFirebaseData(pushUpCount) {
-  try {
-    // Reference to the user's data in Firebase
-    const userRef = ref(realtimeDb, 'users/' + userUID);  // Replace 'userUID' with actual user ID
-    
-    // Fetch current user's data from Firebase
-    const userSnapshot = await get(userRef);
-    const userData = userSnapshot.val();
-    
-    let newTotalReps = userData.totalReps + pushUpCount;  // Increment total push-ups
-    let newMaxReps = Math.max(userData.maxReps, pushUpCount);  // Update max push-ups
-
-    // Update Firebase with the new values
-    await set(userRef, {
-      ...userData,  // Keep other user data intact
-      totalReps: newTotalReps,
-      maxReps: newMaxReps,
-    });
-
-    console.log('Push-up data updated in Firebase!');
-  } catch (error) {
-    console.error('Error updating push-up data in Firebase:', error);
-  }
-}
-
-
-
-
-
-
-
-
-
-
-    function calculateAngle(A, B, C) {
-      const AB = { x: A.x - B.x, y: A.y - B.y };
-      const CB = { x: C.x - B.x, y: C.y - B.y };
-      const dot = (AB.x * CB.x + AB.y * CB.y);
-      const magAB = Math.sqrt(AB.x ** 2 + AB.y ** 2);
-      const magCB = Math.sqrt(CB.x ** 2 + CB.y ** 2);
-      const angleRad = Math.acos(dot / (magAB * magCB));
-      return angleRad * (180 / Math.PI);
-    }
-    
-    function playBeep() {
-      beepAudio.currentTime = 0;
-      beepAudio.play();
-    }
-    
-    function sendLocalVideoFrame() {
-      const tmpCanvas = document.createElement('canvas');
-      tmpCanvas.width = localVideo.videoWidth;
-      tmpCanvas.height = localVideo.videoHeight;
-      const tmpCtx = tmpCanvas.getContext('2d');
-      tmpCtx.drawImage(localVideo, 0, 0, tmpCanvas.width, tmpCanvas.height);
-      const dataURL = tmpCanvas.toDataURL('image/jpeg', 0.5);
-      socket.emit('videoFrame', dataURL);
-    }
-    
-    socket.on('remoteFrame', (dataURL) => {
+    // —————————————————————————————————————————
+    // REMOTE FEED
+    socket.on('remoteFrame', dataURL => {
       remoteFeed.src = dataURL;
     });
+
+    function sendLocalVideoFrame() {
+      const c = document.createElement('canvas');
+      c.width = localVideo.videoWidth;
+      c.height = localVideo.videoHeight;
+      c.getContext('2d').drawImage(localVideo,0,0);
+      socket.emit('videoFrame', c.toDataURL('image/jpeg',0.5));
+    }
+
+    // —————————————————————————————————————————
+    // PUSH‑UP DETECTION LOOP
+    async function detectPose() {
+      if (!modelLoaded || !battleActive) return;
+      const poses = await detector.estimatePoses(localVideo);
+      if (poses.length) {
+        const k = poses[0].keypoints;
+        // find shoulder, elbow, wrist
+        const s = k.find(p=>p.name==='left_shoulder'),
+              e = k.find(p=>p.name==='left_elbow'),
+              w = k.find(p=>p.name==='left_wrist');
+        if (s.score>0.5 && e.score>0.5 && w.score>0.5) {
+          const angle = calculateAngle(s,e,w);
+          if (pushUpState==='up' && angle<downThreshold) {
+            pushUpState='down';
+          }
+          if (pushUpState==='down' && angle>upThreshold) {
+            pushUpCount++;
+            localCountDisplay.innerText = 'Push‑Ups: '+pushUpCount;
+            beepAudio.currentTime=0; beepAudio.play();
+            socket.emit('playerAction',{count:pushUpCount});
+            pushUpState='up';
+          }
+        }
+      }
+      requestAnimationFrame(detectPose);
+    }
+
+    function calculateAngle(A,B,C){
+      const AB={x:A.x-B.x,y:A.y-B.y},
+            CB={x:C.x-B.x,y:C.y-B.y},
+            dot=AB.x*CB.x+AB.y*CB.y,
+            m1=Math.hypot(AB.x,AB.y),
+            m2=Math.hypot(CB.x,CB.y),
+            a=Math.acos(dot/(m1*m2));
+      return a*180/Math.PI;
+    }
+
     
-    function startBattleTimer() {
-      battleTimeLeft = 30;
-      countdownAudioPlayed = false;
-      const timerInterval = setInterval(() => {
+    function startBattleTimer(){
+      battleTimeLeft=30; countdownAudioPlayed=false;
+      const iv = setInterval(()=>{
         battleTimeLeft--;
-        countdownDisplay.innerText = "Time Left: " + battleTimeLeft + "s";
-        if (battleTimeLeft <= 5 && battleTimeLeft > 0) {
+        countdownDisplay.innerText='Time Left: '+battleTimeLeft+'s';
+        if (battleTimeLeft<=5 && battleTimeLeft>0 && !countdownAudioPlayed){
+          countdownAudio.play(); countdownAudioPlayed=true;
           countdownDisplay.classList.add('intense');
         }
-        if (battleTimeLeft <= 0) {
-          clearInterval(timerInterval);
-          countdownDisplay.innerText = "STOP!";
-          setTimeout(() => {
-            countdownDisplay.classList.remove('intense');
-          }, 1000);
+        if (battleTimeLeft<=0){
+          clearInterval(iv);
+          countdownDisplay.innerText='STOP!';
+          setTimeout(()=>countdownDisplay.classList.remove('intense'),1000);
         }
-      }, 1000);
+      },1000);
     }
   </script>
-  <script src="profile.js"></script>
-
 </body>
 </html>
