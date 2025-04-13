@@ -1,62 +1,73 @@
-
 body {
-      font-family: 'Poppins', sans-serif;
-      text-align: center;
-      margin: 0;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
-      color: #fff;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
-    h1 {
-      margin-top: 0;
-      font-size: 4rem;
-      text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
-      animation: fadeIn 2s ease-in-out;
-    }
-    p {
-      font-size: 1.8rem;
-      margin-bottom: 40px;
-      animation: fadeIn 2.5s ease-in-out;
-    }
-    .workout-button {
-      padding: 15px 40px;
-      font-size: 1.5rem;
-      margin: 20px;
-      cursor: pointer;
-      border: none;
-      border-radius: 30px;
-      background: linear-gradient(135deg, #ff7e5f, #feb47b);
-      color: #fff;
-      font-weight: bold;
-      box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
-      transition: transform 0.3s, box-shadow 0.3s, background 0.3s;
-    }
-    .workout-button:hover {
-      transform: scale(1.15);
-      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.4);
-      background: linear-gradient(135deg, #feb47b, #ff7e5f);
-    }
-    .workout-button:active {
-      transform: scale(1.1);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    }
-    footer {
-      margin-top: 50px;
-      font-size: 1rem;
-      color: rgba(255, 255, 255, 0.8);
-      animation: fadeIn 3s ease-in-out;
-    }
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
+ 
+  background: linear-gradient(180deg, #000000,#000000,#000000, #00BFFF); /* Jet Black to Electric Blue */
+  color: #F0F0F0; /* Off-white */
+  font-family: 'Poppins', sans-serif;
+  text-align: center;
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+
+
+h1 {
+  color: #00BFFF; /* Electric Blue */
+  font-size: 4rem;
+  text-shadow: 3px 3px 10px rgba(0, 191, 255, 0.8); /* Glow effect */
+  margin-top: 0;
+  animation: fadeIn 2s ease-in-out;
+}
+
+p {
+  color: #F0F0F0; /* Off-white */
+  font-size: 1.8rem;
+  margin-bottom: 40px;
+  background: #000000;
+}
+
+.workout-button {
+  padding: 15px 40px;
+  font-size: 1.5rem;
+  margin: 20px;
+  cursor: pointer;
+  border: 2px solid #C0C0C0; /* Silver border */
+  border-radius: 30px;
+  background: linear-gradient(135deg, #00BFFF, #C0C0C0); /* Electric Blue to Silver */
+  color: #000000; /* Jet Black */
+  font-weight: bold;
+  box-shadow: 0 6px 15px rgba(0, 191, 255, 0.5); /* Electric Blue glow */
+  transition: transform 0.3s, box-shadow 0.3s, background 0.3s;
+}
+
+.workout-button:hover {
+  transform: scale(1.15);
+  box-shadow: 0 8px 20px rgba(0, 191, 255, 0.7); /* Stronger glow */
+  background: linear-gradient(135deg, #C0C0C0, #00BFFF); /* Silver to Electric Blue */
+}
+
+.workout-button:active {
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(0, 191, 255, 0.5);
+}
+
+footer {
+  margin-top: 50px;
+  font-size: 1rem;
+  color: rgba(240, 240, 240, 0.8); /* Off-white with transparency */
+  animation: fadeIn 3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

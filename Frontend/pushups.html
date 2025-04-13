@@ -1,177 +1,50 @@
 <!DOCTYPE html>
-<html lang="en" style="--primary-color: #8B0000; --accent-color: #FFD700; --secondary-color: #FF00FF; --text-color: #FFFDD0;">
-<head>
-  <style>
-    body {
-      background-color: var(--primary-color);
-      color: var(--text-color);
-      font-family: 'Courier New', Courier, monospace;
-    }
-    nav {
-      background-color: var(--secondary-color);
-      color: var(--text-color);
-    }
-    nav .logo {
-      color: var(--accent-color);
-    }
-    nav ul li a {
-      color: var(--text-color);
-    }
-    nav ul li a:hover {
-      color: var(--accent-color);
-    }
-    #controls {
-      background-color: var(--secondary-color);
-      color: var(--text-color);
-    }
-    #readyButton {
-      background-color: var(--accent-color);
-      color: var(--primary-color);
-    }
-    #readyButton:hover {
-      background-color: var(--text-color);
-      color: var(--primary-color);
-    }
-    #countdown {
-      color: var(--accent-color);
-    }
-    .panel {
-      background-color: var(--secondary-color);
-      color: var(--text-color);
-    }
-    h2 {
-      color: var(--accent-color);
-    }
-    video, #remoteFeed {
-      border-color: var(--accent-color);
-    }
-    #localCount, #remoteCount {
-      color: var(--accent-color);
-    }
-    .intense {
-      color: var(--secondary-color);
-    }
-  </style>
-</head>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <style>
-    nav {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #333;
-      color: white;
-      padding: 10px 20px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    nav .logo {
-      font-size: 24px;
-      font-weight: bold;
-    }
-    nav ul {
-      list-style: none;
-      display: flex;
-      gap: 20px;
-      margin: 0;
-      padding: 0;
-    }
-    nav ul li {
-      display: inline;
-    }
-    nav ul li a {
-      color: white;
-      text-decoration: none;
-      font-size: 18px;
-      transition: color 0.3s ease;
-    }
-    nav ul li a:hover {
-      color: #4caf50;
-    }
-
-  </style>
-  <nav>
-    <div class="logo">FitBrawl</div>
-    <ul>
-      <li><a href="home.html">Home</a></li>
-      <li><a href="profile.html">Profile</a></li>
-    </ul>
-  </nav>
   <title>FitBrawl - Push-Ups Battle</title>
   <style>
     body {
-      font-family: 'Roboto', Arial, sans-serif;
-      background: linear-gradient(to bottom, #4facfe, #00f2fe);
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
       margin: 0;
       padding: 0;
-      color: #333;
     }
     #controls {
       text-align: center;
-      padding: 20px;
-      background: #ffffffcc;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      border-radius: 8px;
-      margin: 20px auto;
-      width: 90%;
-      max-width: 600px;
-    }
-    #readyButton {
-      background: #4caf50;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      font-size: 18px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-    #readyButton:hover {
-      background: #45a049;
+      padding: 10px;
+      background: #ddd;
     }
     #countdown {
       font-size: 48px;
-      color: #ff5722;
+      color: red;
       margin-top: 10px;
-      font-weight: bold;
     }
     #container {
       display: flex;
       flex-direction: row;
-      height: calc(100vh - 200px);
-      gap: 20px;
-      padding: 20px;
+      height: calc(100vh - 160px);
     }
     .panel {
       flex: 1;
-      padding: 20px;
+      padding: 10px;
       text-align: center;
-      background: #ffffffcc;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      border-radius: 8px;
     }
-    h2 {
-      font-size: 24px;
-      margin-bottom: 10px;
-      color: #333;
-    }
-    video, #remoteFeed {
-      width: 100%;
-      max-width: 400px;
-      border: 3px solid #333;
-      border-radius: 8px;
+    video {
+      width: 90%;
+      border: 2px solid #000;
       background: #000;
     }
-    #localCount, #remoteCount {
-      font-size: 20px;
-      margin-top: 10px;
-      font-weight: bold;
-      color: #4caf50;
+    /* Opponent's feed is shown as an image */
+    #remoteFeed {
+      width: 90%;
+      border: 2px solid #000;
+      background: #000;
     }
+    /* Intense effect for final seconds */
     .intense {
       animation: shake 0.5s infinite;
-      color: #e91e63;
+      color: red;
     }
     @keyframes shake {
       0% { transform: translate(0px, 0px); }
@@ -181,9 +54,6 @@
       100% { transform: translate(0px, -5px); }
     }
   </style>
-
-
-
 
 
 
@@ -211,7 +81,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
-  <script src ="Frontend/js/profile.js"></script>
 
   <script>
     const socket = io();
@@ -228,7 +97,7 @@
     const downThreshold = 90;
     const upThreshold = 160;
     const beepAudio = new Audio('beep.mp3');
-    const countdownAudio = new Audio('countdown.mp3'); // This is your countdown audio file.
+    const countdownAudio = new Audio('countdown.mp3'); 
     let battleActive = false;
     let battleTimeLeft = 30;
     let countdownAudioPlayed = false;
@@ -257,7 +126,6 @@
     }
     loadPoseModel();
     
-    // When "Ready" is clicked, tell the server.
     document.getElementById('readyButton').addEventListener('click', () => {
       countdownAudio.play();
       socket.emit('playerReady');
@@ -290,7 +158,7 @@
     socket.on('battleResult', (data) => {
       const localScore = localRole === 'A' ? data.scores.A : data.scores.B;
       const remoteScore = localRole === 'A' ? data.scores.B : data.scores.A;
-      localStorage.setItem("finalCount", localScore);
+      sessionStorage.setItem("finalCount", localScore);
       if (localScore > remoteScore) {
         location.href = "winner.html";
       } else if (localScore < remoteScore) {
@@ -299,7 +167,7 @@
         location.href = "winner.html"; // In case of tie.
       }
 
-     
+
 
     });
     
@@ -314,8 +182,8 @@
       detectPose();
       setInterval(sendLocalVideoFrame, 250);
     }
+    
 
-<<<<<<< HEAD
 
 
 
@@ -328,11 +196,7 @@
   let minAngle = 0;  // Set your angle threshold for detection
   let upThreshold = 90;  // Customize this threshold for the 'up' state
   
-  // Assuming the pose data is updated continuously in the loop
   if (pose) {
-    // Extract the angle of the arms (or relevant body parts) to determine 'up' and 'down' states
-    // This logic needs to be based on your pose detection and the angle calculation.
-    // For example, detect if the angle of the arm is between a threshold of 'up' and 'down'.
 
     let angle = calculateArmAngle(pose);  // Replace with actual angle calculation logic
 
@@ -345,38 +209,13 @@
       localCountDisplay.innerText = "Push-Ups: " + pushUpCount;
       playBeep(); 
       pushUpState = 
-=======
-    async function detectPose() {
-      if (!modelLoaded) return;
-      const pose = await detector.estimatePoses(localVideo);
-      if (pose && pose.length > 0) {
-        const keypoints = pose[0].keypoints;
-        const angle = calculateArmAngle(keypoints);
-        
-        if (pushUpState === "up" && angle < downThreshold) {
-          pushUpState = "down";
-        } else if (pushUpState === "down" && angle > upThreshold) {
-          pushUpCount++;
-          localCountDisplay.innerText = "Push-Ups: " + pushUpCount;
-          playBeep();
-          pushUpState = "up";
-          socket.emit('playerAction', { count: pushUpCount });
-        }
-      }
-    }
->>>>>>> 249d778 (WIP: save before pull)
 
-    function calculateArmAngle(keypoints) {
-      const shoulder = keypoints.find(point => point.part === "shoulder");
-      const elbow = keypoints.find(point => point.part === "elbow");
-      const wrist = keypoints.find(point => point.part === "wrist");
-      
-      if (shoulder && elbow && wrist) {
-        return calculateAngle(shoulder.position, elbow.position, wrist.position);
-      }
-      return 0;
+      // Emit the updated push-up count to the server (if using socket)
+      socket.emit('playerAction', { count: pushUpCount });
+
+      // Update Firebase with the new push-up count, total, and max
+      updateFirebaseData(pushUpCount);
     }
-<<<<<<< HEAD
   }
 }
 
@@ -436,9 +275,6 @@ async function updateFirebaseData(pushUpCount) {
 
 
 
-=======
->>>>>>> 249d778 (WIP: save before pull)
-
 
     function calculateAngle(A, B, C) {
       const AB = { x: A.x - B.x, y: A.y - B.y };
@@ -469,7 +305,6 @@ async function updateFirebaseData(pushUpCount) {
       remoteFeed.src = dataURL;
     });
     
-    // Start battle timer (30s) with countdown.mp3 played when time is 3 seconds or less.
     function startBattleTimer() {
       battleTimeLeft = 30;
       countdownAudioPlayed = false;
