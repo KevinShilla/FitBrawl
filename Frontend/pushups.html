@@ -17,7 +17,7 @@
     #container { display: flex; height: calc(100vh - 120px); }
     .panel { flex: 1; padding: 10px; text-align: center; }
     video, canvas, img { width: 90%; border: 2px solid #000; background: #000; }
-    canvas { display: none; } /* hidden drawing canvas */
+    canvas { display: none; }
   </style>
 </head>
 <body>
@@ -35,6 +35,7 @@
     </div>
     <div class="panel">
       <h2>Opponent's Camera</h2>
+      <img id="remoteFeed" alt="Opponent's Snapshot">
       <div id="remoteCount">Push-Ups: 0</div>
     </div>
   </div>
@@ -57,11 +58,6 @@
     const remoteCountDisplay = document.getElementById('remoteCount');
     const countdownDisplay = document.getElementById('countdown');
     const battleTimerDisplay = document.getElementById('battleTimerDisplay');
-
-    socket.on('connect', () => {
-      sendLocalVideoFrame();
-      setInterval(sendLocalVideoFrame, 250);
-    });
 
     async function setupCamera() {
       try {
@@ -87,7 +83,6 @@
     }
     loadModel();
 
-    // 3) Socket handlers
     document.getElementById('readyButton').onclick = () => {
       socket.emit('playerReady');
       document.getElementById('readyButton').disabled = true;
@@ -108,6 +103,19 @@
     socket.on('updateScores', d => {
       localCountDisplay.innerText = 'Push-Ups: ' + (localRole==='A'?d.A:d.B);
       remoteCountDisplay.innerText = 'Push-Ups: ' + (localRole==='A'?d.B:d.A);
+    });
+
+    socket.on('battleResult', data => {
+      const localScore  = localRole === 'A' ? data.scores.A : data.scores.B;
+      const remoteScore = localRole === 'A' ? data.scores.B : data.scores.A;
+
+      if (localScore > remoteScore) {
+        location.href = "winner.html";
+      } else if (localScore < remoteScore) {
+        location.href = "loser.html";
+      } else {
+        location.href = "winner.html";
+      }
     });
 
     // 4) Detection loop
