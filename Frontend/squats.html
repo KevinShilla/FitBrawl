@@ -79,7 +79,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
 
   <script>
-    // SOCKET SETUP
     const socket = io();
     let localRole = '';
     
@@ -94,7 +93,6 @@
       }
     });
 
-    // UI Elements
     const localVideo = document.getElementById('localVideo');
     const remoteFeed = document.getElementById('remoteFeed');
     const localCountDisplay = document.getElementById('localCount');
@@ -102,25 +100,21 @@
     const countdownDisplay = document.getElementById('countdown');
     const readyButton = document.getElementById('readyButton');
     
-    // Squat detection variables
+  
     let squatCount = 0;
-    let squatState = "up";  // "up" when standing; becomes "down" when knees flex
+    let squatState = "up"; 
     let modelLoaded = false;
-    // Set thresholds for squat detection (adjust as needed)
-    const squatDownThreshold = 100;  // when knee angle is less than or equal to this, considered squat down
-    const squatUpThreshold = 160;    // when knee angle rises above this, count a squat
-    const beepAudio = new Audio('beep.mp3');  // Beep sound for each squat
-    const countdownAudio = new Audio('countdown.mp3'); // Audio played with the countdown
+    const squatDownThreshold = 100;
+    const squatUpThreshold = 160;
+    const beepAudio = new Audio('beep.mp3'); 
+    const countdownAudio = new Audio('countdown.mp3');
 
-    // Battle control variables
     let battleActive = false;
     let battleTimeLeft = 30;
     let countdownAudioPlayed = false;
     
-    // Pose detection model
     let detector;
     
-    // START CAMERA ON LOAD
     async function setupCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -132,7 +126,6 @@
     }
     setupCamera();
 
-    // LOAD POSE DETECTION MODEL (MoveNet)
     async function loadPoseModel() {
       countdownDisplay.innerText = "Loading model...";
       detector = await poseDetection.createDetector(
@@ -144,14 +137,12 @@
     }
     loadPoseModel();
     
-    // READY BUTTON HANDLER
     readyButton.addEventListener('click', () => {
-      // Optionally play a sound here for feedback.
+      countdownAudio.play();
       socket.emit('playerReady');
       readyButton.disabled = true;
     });
     
-    // SOCKET EVENTS
     socket.on('assignRole', (role) => {
       localRole = role;
       document.getElementById('roleDisplay').innerText = role;
@@ -161,17 +152,14 @@
       countdownDisplay.innerText = number > 0 ? number : "GO!";
     });
     
-    // When battle starts, both players begin at the same time
     socket.on('startBattle', () => {
       countdownDisplay.innerText = "";
       battleActive = true;
-      // Both cameras should already be on; start squat detection and battle timer
       startSquatDetection();
       startBattleTimer();
     });
     
     socket.on('updateScores', (data) => {
-      // Update local and remote squat scores as per assigned roles.
       localCountDisplay.innerText = "Squats: " + (localRole === 'A' ? data.A : data.B);
       remoteCountDisplay.innerText = "Squats: " + (localRole === 'A' ? data.B : data.A);
     });
@@ -185,7 +173,6 @@
       } else if (localScore < remoteScore) {
         location.href = "loser.html";
       } else {
-        // In case of tie, you might want to redirect to a tie page or declare a winner.
         location.href = "winner.html";
       }
     });
@@ -250,7 +237,6 @@
       }
     }
     
-    // Helper: calculates the angle (in degrees) between three points.
     function calculateAngle(A, B, C) {
       const AB = { x: A.x - B.x, y: A.y - B.y };
       const CB = { x: C.x - B.x, y: C.y - B.y };
@@ -266,7 +252,6 @@
       beepAudio.play();
     }
     
-    // Send local video frame snapshot to the server for the remote feed.
     function sendLocalVideoFrame() {
       const tmpCanvas = document.createElement('canvas');
       tmpCanvas.width = localVideo.videoWidth;
@@ -277,7 +262,6 @@
       socket.emit('videoFrame', dataURL);
     }
     
-    // BATTLE TIMER: 30-second countdown for the squat battle.
     function startBattleTimer() {
       battleTimeLeft = 30;
       countdownAudioPlayed = false;
@@ -286,11 +270,6 @@
         countdownDisplay.innerText = "Time Left: " + battleTimeLeft + "s";
         if (battleTimeLeft <= 5 && battleTimeLeft > 0) {
           countdownDisplay.classList.add('intense');
-          if (!countdownAudioPlayed) {
-            countdownAudio.currentTime = 0;
-            countdownAudio.play();
-            countdownAudioPlayed = true;
-          }
         }
         if (battleTimeLeft <= 0) {
           clearInterval(timerInterval);

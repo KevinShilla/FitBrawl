@@ -35,13 +35,6 @@
       border: 2px solid #000;
       background: #000;
     }
-    /* Opponent's feed is shown as an image */
-    #remoteFeed {
-      width: 90%;
-      border: 2px solid #000;
-      background: #000;
-    }
-    /* Intense effect for final seconds */
     .intense {
       animation: shake 0.5s infinite;
       color: red;
@@ -102,7 +95,6 @@
     let battleTimeLeft = 30;
     let countdownAudioPlayed = false;
     
-    // Start the local camera immediately so the feed shows.
     async function setupCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -114,7 +106,6 @@
     }
     setupCamera();
     
-    // Load the MoveNet model.
     async function loadPoseModel() {
       countdownDisplay.innerText = "Loading model...";
       detector = await poseDetection.createDetector(
@@ -141,12 +132,14 @@
       countdownDisplay.innerText = number > 0 ? number : "GO!";
     });
     
-    // When the battle starts, clear countdown, start push-up detection and timer.
-    socket.on('startBattle', () => {
-      countdownDisplay.innerText = "";
-      battleActive = true;
-      startPushUpDetection();
-      startBattleTimer();
+    socket.on('startBattle', ({ startTime}) => {
+      const delay = startTime - Date.now()
+      setTimeout(() => {
+        countdownDisplay.innerText = '';
+        battleActive = true;
+        startPushUpDetection()
+        startBattleTimer();
+      }, delay);
     });
     
     socket.on('updateScores', (data) => {
@@ -302,7 +295,7 @@ async function updateFirebaseData(pushUpCount) {
     }
     
     socket.on('remoteFrame', (dataURL) => {
-      remoteFeed.src = dataURL;
+      document.getElementById('remoteFeed').src = dataURL;
     });
     
     function startBattleTimer() {
