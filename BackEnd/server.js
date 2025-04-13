@@ -229,27 +229,25 @@ function endBattle() {
 app.get('/api/leaderboard', (req, res) => {
   const pushupsQuery = `SELECT username, pushups FROM users ORDER BY pushups DESC LIMIT 15`;
   const squatsQuery = `SELECT username, squats FROM users ORDER BY squats DESC LIMIT 15`;
-  const plankQuery = `SELECT username, planks FROM users ORDER BY planks DESC LIMIT 15`;
+  const plankQuery  = `SELECT username, planks FROM users ORDER BY planks DESC LIMIT 15`;
 
   const leaderboard = {};
 
   db.all(pushupsQuery, [], (err, pushupResults) => {
     if (err) return res.status(500).send("Error loading pushups");
-
     leaderboard.pushups = pushupResults;
 
     db.all(squatsQuery, [], (err, squatResults) => {
       if (err) return res.status(500).send("Error loading squats");
-
       leaderboard.squats = squatResults;
-      res.json(leaderboard);
-    });
 
-    db.all(plankQuery, [], (err, plankResults) => {
-      if (err) return res.status(500).send("Error loading planks");
-    
-      leaderboard.planks = plankResults;
-      res.json(leaderboard);
+      db.all(plankQuery, [], (err, plankResults) => {
+        if (err) return res.status(500).send("Error loading planks");
+        leaderboard.planks = plankResults;
+
+        // ✅ All done — send the response
+        res.json(leaderboard);
+      });
     });
   });
 });

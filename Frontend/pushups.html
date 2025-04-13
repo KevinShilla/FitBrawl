@@ -232,20 +232,24 @@
     socket.on('battleResult', data => {
       const localScore  = localRole === 'A' ? data.scores.A : data.scores.B;
       const remoteScore = localRole === 'A' ? data.scores.B : data.scores.A;
-    
+
       fetch('/update-stats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pushups: localScore })
+      })
+      .then(() => {
+        if (localScore > remoteScore) {
+          location.href = "winner.html";
+        } else if (localScore < remoteScore) {
+          location.href = "loser.html";
+        } else {
+          location.href = "winner.html";
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to update pushups:", err);
       });
-    
-      if (localScore > remoteScore) {
-        location.href = "winner.html";
-      } else if (localScore < remoteScore) {
-        location.href = "loser.html";
-      } else {
-        location.href = "winner.html";
-      }
     });
 
     // 4) Detection loop
