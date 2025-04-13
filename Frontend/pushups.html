@@ -2,45 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>FitBrawl - Push-Ups Battle</title>
+  <title>FitBrawl - Push‑Ups Battle</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f0f0;
-      margin: 0; padding: 0;
-    }
-    #controls {
-      text-align: center;
-      padding: 10px;
-      background: #ddd;
-    }
-    #countdown {
-      font-size: 48px;
-      color: red;
-      margin-top: 10px;
-    }
-    #container {
-      display: flex;
-      height: calc(100vh - 160px);
-    }
-    .panel {
-      flex: 1; padding: 10px; text-align: center;
-    }
-    video, img {
-      width: 90%;
-      border: 2px solid #000;
-      background: #000;
-    }
-    .intense {
-      animation: shake 0.5s infinite;
-      color: red;
-    }
+    body { font-family:Arial,sans-serif; background:#f0f0f0; margin:0; padding:0; }
+    #controls { text-align:center; padding:10px; background:#ddd; }
+    #countdown { font-size:48px; color:red; margin-top:10px; }
+    #container { display:flex; height:calc(100vh-160px); }
+    .panel { flex:1; padding:10px; text-align:center; }
+    video,img { width:90%; border:2px solid #000; background:#000; }
+    .intense { animation:shake .5s infinite; color:red; }
     @keyframes shake {
-      0% { transform: translate(0,0) }
-      25% { transform: translate(5px,0) }
-      50% { transform: translate(0,5px) }
-      75% { transform: translate(-5px,0) }
-      100% { transform: translate(0,-5px) }
+      0%{transform:translate(0,0)}25%{transform:translate(5px,0)}
+      50%{transform:translate(0,5px)}75%{transform:translate(-5px,0)}
+      100%{transform:translate(0,-5px)}
     }
   </style>
 </head>
@@ -52,13 +26,13 @@
   <div id="container">
     <div class="panel">
       <h2>Your Camera (<span id="roleDisplay"></span>)</h2>
-      <video id="localVideo" playsinline autoplay muted style="display:none"></video>
-      <div id="localCount">Push-Ups: 0</div>
+      <video id="localVideo" playsinline autoplay muted></video>
+      <div id="localCount">Push‑Ups: 0</div>
     </div>
     <div class="panel">
       <h2>Opponent's Camera</h2>
       <img id="remoteFeed" alt="Opponent's Snapshot">
-      <div id="remoteCount">Push-Ups: 0</div>
+      <div id="remoteCount">Push‑Ups: 0</div>
     </div>
   </div>
 
@@ -66,181 +40,131 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
   <script>
-    // —————————————————————————————————————————
-    // SOCKET.IO SETUP
     const socket = io();
+    let localRole='', detector, modelLoaded=false;
+    let battleActive=false, battleTimeLeft=30, countdownPlayed=false;
+    let pushUpCount=0, pushUpState='up';
+    const downT=90, upT=160;
+    const beep=new Audio('beep.mp3'), countdownAudio=new Audio('countdown.mp3');
 
-    // Send frames immediately so remote feed shows up before Ready
-    socket.on('connect', () => {
-      sendLocalVideoFrame();
-      setInterval(sendLocalVideoFrame, 250);
+    const lv=document.getElementById('localVideo'),
+          rf=document.getElementById('remoteFeed'),
+          lc=document.getElementById('localCount'),
+          rc=document.getElementById('remoteCount'),
+          cd=document.getElementById('countdown'),
+          rb=document.getElementById('readyButton'),
+          roleDisp=document.getElementById('roleDisplay');
+
+    // send frames immediately for remote feed
+    socket.on('connect',()=>{
+      sendFrame(); setInterval(sendFrame,250);
     });
+    socket.on('remoteFrame',url=>rf.src=url);
 
-    // —————————————————————————————————————————
-    // GLOBAL STATE
-    let localRole = '';
-    let detector, modelLoaded = false;
-    let battleActive = false;
-    let battleTimeLeft = 30;
-    let countdownAudioPlayed = false;
-
-    let pushUpCount = 0;
-    let pushUpState = 'up';
-    const downThreshold = 90;
-    const upThreshold = 160;
-
-    const beepAudio = new Audio('beep.mp3');
-    const countdownAudio = new Audio('countdown.mp3');
-
-    // —————————————————————————————————————————
-    // UI ELEMENTS
-    const localVideo = document.getElementById('localVideo');
-    const remoteFeed = document.getElementById('remoteFeed');
-    const localCountDisplay = document.getElementById('localCount');
-    const remoteCountDisplay = document.getElementById('remoteCount');
-    const countdownDisplay = document.getElementById('countdown');
-    const readyButton = document.getElementById('readyButton');
-
-    // —————————————————————————————————————————
-    // CAMERA & MODEL
-    async function setupCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        localVideo.srcObject = stream;
-        await localVideo.play();
-      } catch (e) {
-        alert('Camera error: ' + e);
-      }
+    // camera + model on load
+    async function setupCamera(){
+      try{
+        const s=await navigator.mediaDevices.getUserMedia({video:true});
+        lv.srcObject=s; await lv.play();
+      }catch(e){alert(e)}
     }
     setupCamera();
 
-    async function loadModel() {
-      countdownDisplay.innerText = 'Loading model...';
-      detector = await poseDetection.createDetector(
+    async function loadModel(){
+      cd.innerText='Loading model...';
+      detector=await poseDetection.createDetector(
         poseDetection.SupportedModels.MoveNet,
-        { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+        {modelType:poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING}
       );
-      modelLoaded = true;
-      countdownDisplay.innerText = '';
+      modelLoaded=true; cd.innerText='';
     }
     loadModel();
 
-    // —————————————————————————————————————————
-    // READY & SYNCED START
-    readyButton.addEventListener('click', () => {
+    // ready + sync start
+    rb.onclick=()=>{
       countdownAudio.play();
       socket.emit('playerReady');
-      readyButton.disabled = true;
+      rb.disabled=true;
+    };
+    socket.on('assignRole',r=>roleDisp.innerText=localRole=r);
+    socket.on('startCountdown',n=>cd.innerText=n>0?n:'GO!');
+    socket.on('startBattle',({startTime})=>{
+      const d=startTime-Date.now();
+      cd.innerText='Starting in '+Math.ceil(d/1000)+'s';
+      setTimeout(()=>{
+        cd.innerText=''; 
+        battleActive=true;
+        detectPushUps(); 
+        startTimer();
+      },d);
     });
 
-    socket.on('assignRole', role => {
-      localRole = role;
-      document.getElementById('roleDisplay').innerText = role;
+    // score updates
+    socket.on('updateScores',d=>{
+      lc.innerText='Push‑Ups: '+(localRole==='A'?d.A:d.B);
+      rc.innerText='Push‑Ups: '+(localRole==='A'?d.B:d.A);
     });
-
-    socket.on('startCountdown', num => {
-      countdownDisplay.innerText = num > 0 ? num : 'GO!';
+    socket.on('battleResult',data=>{
+      const a=data.scores.A, b=data.scores.B;
+      const me=localRole==='A'?a:b, opp=localRole==='A'?b:a;
+      sessionStorage.setItem('finalCount',me);
+      location.href=me>=opp?'winner.html':'loser.html';
     });
+    socket.on('battleCancelled',()=>{alert('Cancelled');location.reload()});
 
-    socket.on('startBattle', ({ startTime }) => {
-      const delay = startTime - Date.now();
-      countdownDisplay.innerText = 'Starting in ' + Math.ceil(delay/1000) + 's';
-      setTimeout(() => {
-        countdownDisplay.innerText = '';
-        battleActive = true;
-        localVideo.style.display = 'block';
-        detectPose();
-        startBattleTimer();
-      }, delay);
-    });
-
-
-    socket.on('updateScores', data => {
-      localCountDisplay.innerText = 'Push-Ups: ' +
-        (localRole==='A'? data.A : data.B);
-      remoteCountDisplay.innerText = 'Push-Ups: ' +
-        (localRole==='A'? data.B : data.A);
-    });
-
-    socket.on('battleResult', data => {
-      const a = data.scores.A, b = data.scores.B;
-      const localScore = localRole==='A'? a : b;
-      const remoteScore= localRole==='A'? b : a;
-      sessionStorage.setItem('finalCount', localScore);
-      location.href = localScore>=remoteScore? 'winner.html':'loser.html';
-    });
-
-    socket.on('battleCancelled', () => {
-      alert('Battle cancelled.');
-      location.reload();
-    });
-
-    // —————————————————————————————————————————
-    // REMOTE FEED
-    socket.on('remoteFrame', dataURL => {
-      remoteFeed.src = dataURL;
-    });
-
-    function sendLocalVideoFrame() {
-      const c = document.createElement('canvas');
-      c.width = localVideo.videoWidth;
-      c.height = localVideo.videoHeight;
-      c.getContext('2d').drawImage(localVideo,0,0);
-      socket.emit('videoFrame', c.toDataURL('image/jpeg',0.5));
+    // send frame
+    function sendFrame(){
+      const c=document.createElement('canvas');
+      c.width=lv.videoWidth; c.height=lv.videoHeight;
+      c.getContext('2d').drawImage(lv,0,0);
+      socket.emit('videoFrame',c.toDataURL('image/jpeg',.5));
     }
 
-    // —————————————————————————————————————————
-    // PUSH‑UP DETECTION LOOP
-    async function detectPose() {
-      if (!modelLoaded || !battleActive) return;
-      const poses = await detector.estimatePoses(localVideo);
-      if (poses.length) {
-        const k = poses[0].keypoints;
-        // find shoulder, elbow, wrist
-        const s = k.find(p=>p.name==='left_shoulder'),
-              e = k.find(p=>p.name==='left_elbow'),
-              w = k.find(p=>p.name==='left_wrist');
-        if (s.score>0.5 && e.score>0.5 && w.score>0.5) {
-          const angle = calculateAngle(s,e,w);
-          if (pushUpState==='up' && angle<downThreshold) {
-            pushUpState='down';
-          }
-          if (pushUpState==='down' && angle>upThreshold) {
-            pushUpCount++;
-            localCountDisplay.innerText = 'Push‑Ups: '+pushUpCount;
-            beepAudio.currentTime=0; beepAudio.play();
+    // detection loop
+    async function detectPushUps(){
+      if(!modelLoaded||!battleActive) return;
+      const poses=await detector.estimatePoses(lv);
+      if(poses.length){
+        const k=poses[0].keypoints,
+              s=k.find(p=>p.name==='left_shoulder'),
+              e=k.find(p=>p.name==='left_elbow'),
+              w=k.find(p=>p.name==='left_wrist');
+        if(s.score>.5&&e.score>.5&&w.score>.5){
+          const ang=calcAngle(s,e,w);
+          if(pushUpState==='up'&&ang<downT) pushUpState='down';
+          if(pushUpState==='down'&&ang>upT){
+            pushUpCount++; lc.innerText='Push‑Ups: '+pushUpCount;
+            beep.currentTime=0;beep.play();
             socket.emit('playerAction',{count:pushUpCount});
             pushUpState='up';
           }
         }
       }
-      requestAnimationFrame(detectPose);
+      requestAnimationFrame(detectPushUps);
     }
 
-    function calculateAngle(A,B,C){
-      const AB={x:A.x-B.x,y:A.y-B.y},
-            CB={x:C.x-B.x,y:C.y-B.y},
+    function calcAngle(A,B,C){
+      const AB={x:A.x-B.x,y:A.y-B.y}, CB={x:C.x-B.x,y:C.y-B.y},
             dot=AB.x*CB.x+AB.y*CB.y,
-            m1=Math.hypot(AB.x,AB.y),
-            m2=Math.hypot(CB.x,CB.y),
+            m1=Math.hypot(AB.x,AB.y), m2=Math.hypot(CB.x,CB.y),
             a=Math.acos(dot/(m1*m2));
       return a*180/Math.PI;
     }
 
-    
-    function startBattleTimer(){
-      battleTimeLeft=30; countdownAudioPlayed=false;
-      const iv = setInterval(()=>{
+    // timer
+    function startTimer(){
+      battleTimeLeft=30; countdownPlayed=false;
+      const iv=setInterval(()=>{
         battleTimeLeft--;
-        countdownDisplay.innerText='Time Left: '+battleTimeLeft+'s';
-        if (battleTimeLeft<=5 && battleTimeLeft>0 && !countdownAudioPlayed){
-          countdownAudio.play(); countdownAudioPlayed=true;
-          countdownDisplay.classList.add('intense');
+        cd.innerText='Time Left: '+battleTimeLeft+'s';
+        if(battleTimeLeft<=5&&battleTimeLeft>0&&!countdownPlayed){
+          countdownAudio.play(); countdownPlayed=true;
+          cd.classList.add('intense');
         }
-        if (battleTimeLeft<=0){
+        if(battleTimeLeft<=0){
           clearInterval(iv);
-          countdownDisplay.innerText='STOP!';
-          setTimeout(()=>countdownDisplay.classList.remove('intense'),1000);
+          cd.innerText='STOP!';
+          setTimeout(()=>cd.classList.remove('intense'),1000);
         }
       },1000);
     }
