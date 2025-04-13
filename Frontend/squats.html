@@ -72,6 +72,7 @@
       <div id="remoteCount">Squats: 0</div>
     </div>
   </div>
+    
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
@@ -98,6 +99,20 @@
     const remoteCountDisplay = document.getElementById('remoteCount');
     const countdownDisplay = document.getElementById('countdown');
     const readyButton = document.getElementById('readyButton');
+
+    const comments = [
+    "You is a bitch",
+    "Gay ass nigga",
+    "trash and garbage",
+    "Was that a rep or a seizure?",
+    "oh hell nah",
+    "You call *that* a squat?",
+    "Bro's about to take flight!",
+    "Textbook movement! Let's gooo!",
+    "I’ve seen toddlers with better balance.",
+    "They're built different!"
+];
+
     
   
     let squatCount = 0;
@@ -190,6 +205,26 @@
       detectSquatPose();
       setInterval(sendLocalVideoFrame, 250);
     }
+
+    function getBestVoice() {
+    const voices = speechSynthesis.getVoices();
+    // Try a known good one (you can tweak based on browser)
+    return voices.find(voice =>
+    voice.name.includes("Google") ||
+    voice.name.includes("Microsoft") ||
+    voice.name.includes("UK") ||
+    voice.lang === "en-US"
+  );
+}
+
+    function speak(text) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.pitch = 1.2;
+    utterance.rate = 1; // make it slower if it's too fast
+    utterance.voice = speechSynthesis.getVoices().find(v => v.lang === 'en-US');
+    speechSynthesis.speak(utterance);
+}
+
     
     async function detectSquatPose() {
       if (!modelLoaded || !battleActive) return;
@@ -218,6 +253,8 @@
           }
           if (squatState === "down" && minKneeAngle > squatUpThreshold) {
             squatCount++;
+            const randomComment = comments[Math.floor(Math.random() * comments.length)];
+            speak(randomComment);
             localCountDisplay.innerText = "Squats: " + squatCount;
             playBeep();
             squatState = "up";
