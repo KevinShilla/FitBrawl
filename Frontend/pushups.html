@@ -35,7 +35,6 @@
     </div>
     <div class="panel">
       <h2>Opponent's Camera</h2>
-      <img id="remoteFeed" alt="Opponent's Snapshot">
       <div id="remoteCount">Push-Ups: 0</div>
     </div>
   </div>
@@ -58,6 +57,11 @@
     const remoteCountDisplay = document.getElementById('remoteCount');
     const countdownDisplay = document.getElementById('countdown');
     const battleTimerDisplay = document.getElementById('battleTimerDisplay');
+
+    socket.on('connect', () => {
+      sendLocalVideoFrame();
+      setInterval(sendLocalVideoFrame, 250);
+    });
 
     async function setupCamera() {
       try {
