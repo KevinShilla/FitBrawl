@@ -112,22 +112,12 @@
        document.getElementById('countdown').innerText = number > 0 ? number : "GO!";
      });
  
-     socket.on('startBattle', ({ startTime }) => {
-      // Calculate how long until we should actually begin
-      const delay = startTime - Date.now();
-    
-      // (Optional) show a “Starting in Xs” message
-      countdownDisplay.innerText = 'Starting in ' + Math.ceil(delay/1000) + 's';
-    
-      setTimeout(() => {
-        // Clear any message, then start detection and timer in sync
-        countdownDisplay.innerText = '';
-        battleActive = true;
-        startPushUpDetection();
-        startBattleTimer();
-      }, delay);
-    });
-    
+     socket.on('startBattle', () => {
+       document.getElementById('countdown').innerText = "";
+       battleActive = true;
+       startPushUpDetection();
+       startBattleTimer();
+     });
  
      socket.on('updateScores', (data) => {
        localCountDisplay.innerText = "Push-Ups: " + (localRole === 'A' ? data.A : data.B);
@@ -136,16 +126,6 @@
  
      socket.on('battleResult', (data) => {
        alert("Battle Over! " + data.winner + "\nScores - Player A: " + data.scores.A + " | Player B: " + data.scores.B);
-       // Save push-up count to localStorage
-     let previousTotal = Number(localStorage.getItem('totalPushups')) || 0;
-     let maxPushups = Number(localStorage.getItem('maxPushups')) || 0;
- 
-     localStorage.setItem('totalPushups', previousTotal + pushUpCount);
- 
-     if (pushUpCount > maxPushups) {
-     localStorage.setItem('maxPushups', pushUpCount);
-   }
- 
        location.reload();
      });
  
@@ -179,7 +159,7 @@
      function startPushUpDetection() {
        if (!modelLoaded) return;
        detectPose();
-       setInterval(sendLocalVideoFrame, 200);
+       setInterval(sendLocalVideoFrame, 225);
      }
  
      async function detectPose() {
