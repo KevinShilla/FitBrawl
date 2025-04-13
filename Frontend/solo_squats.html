@@ -119,6 +119,7 @@
   <button id="startButton">Start</button>
   <div id="message"></div>
   <div id="counter">Squats: 0</div>
+  <button id="doneButton" style="display:none;">Done</button>
   <video id="video" playsinline></video>
   <canvas id="canvas"></canvas>
 
@@ -164,6 +165,8 @@
       document.getElementById('message').innerText = "";
 
       detectPose();
+      document.getElementById("doneButton").style.display = "inline-block";
+
     }
 
     function calculateAngle(A, B, C) {
@@ -233,6 +236,24 @@
       beepAudio.currentTime = 0;
       beepAudio.play();
     }
+
+    document.getElementById("doneButton").addEventListener("click", () => {
+      fetch('/update-stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ squats: squatCount })
+      })
+      .then(res => res.text())
+      .then(msg => {
+        alert("Squats saved!");
+        window.location.href = "/profile.html";
+      })
+      .catch(err => {
+        console.error('Failed to update squats:', err);
+        alert("Error saving squats.");
+      });
+    });
+    
   </script>
 </body>
 </html>

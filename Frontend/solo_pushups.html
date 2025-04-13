@@ -121,6 +121,7 @@
   <button id="startButton">Start</button>
   <div id="message"></div>
   <div id="counter">Push-ups: 0</div>
+  <button id="doneButton" style="display:none;">Done</button>
   <video id="video" playsinline></video>
   <canvas id="canvas"></canvas>
 
@@ -167,6 +168,7 @@
       document.getElementById('message').innerText = "";
 
       detectPose();
+      document.getElementById("doneButton").style.display = "inline-block";
     }
 
     function calculateAngle(A, B, C) {
@@ -246,6 +248,24 @@
         messageDiv.innerText = "";
       }, 1000);
     }
+
+    document.getElementById("doneButton").addEventListener("click", () => {
+      fetch('/update-stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pushups: pushUpCount })
+      })
+      .then(res => res.text())
+      .then(msg => {
+        alert("Push-ups saved!");
+        window.location.href = "/profile.html";
+      })
+      .catch(err => {
+        console.error('Failed to update pushups:', err);
+        alert("Error saving push-ups.");
+      });
+    });
+    
   </script>
 </body>
 </html>

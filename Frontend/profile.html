@@ -1,32 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your FitBrawl Profile</title>
-    <link rel="stylesheet" href="css/profile.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Your FitBrawl Profile</title>
+  <link rel="stylesheet" href="css/profile.css" />
 </head>
+
 <nav>
-    <a href="home.html">Home</a>
-    <a href="profile.html">Profile</a>
+  <a href="home.html">Home</a>
+  <a href="profile.html">Profile</a>
 </nav>
+
 <body>
+  <div class="profile-card">
+    <h2>🏋️ FitBrawl Profile</h2>
+    <div class="stat" id="pushupCount">0</div>
+    <div class="label">Push-Ups Completed</div>
 
-    <div class="profile-card">
-        <h2>🏋️ FitBrawl Profile</h2>
-        <div class="stat" id="pushupCount">0</div>
-        <div class="label">Push-Ups Completed</div>
-        <button class="btn" onclick="resetData()">Clear Data</button>
-    </div>
+    <div class="stat" id="squatCount">0</div>
+    <div class="label">Squats Completed</div>
 
-    <script>
-        const count = localStorage.getItem("finalCount") || 0;
-        document.getElementById("pushupCount").textContent = count;
+    <button class="btn" onclick="logout()">Logout</button>
+  </div>
 
-        function resetData() {
-            localStorage.removeItem("finalCount");
-            document.getElementById("pushupCount").textContent = 0;
-        }
-    </script>
+  <script>
+    // Load data from the server
+    fetch('/api/profile')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("pushupCount").textContent = data.pushups;
+        document.getElementById("squatCount").textContent = data.squats;
+      })
+      .catch(err => {
+        console.error('Failed to load stats:', err);
+        alert('Please log in first.');
+        window.location.href = "/index.html";
+      });
+
+    function logout() {
+      fetch('/logout', { method: 'POST' })
+        .then(() => window.location.href = "/index.html");
+    }
+  </script>
 </body>
 </html>

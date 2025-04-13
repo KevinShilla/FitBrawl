@@ -260,6 +260,11 @@
     });
     
     socket.on('battleResult', (data) => {
+      fetch('/update-stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ squats: localScore })
+      });      
       const localScore = localRole === 'A' ? data.scores.A : data.scores.B;
       const remoteScore = localRole === 'A' ? data.scores.B : data.scores.A;
       sessionStorage.setItem("finalCount", localScore);

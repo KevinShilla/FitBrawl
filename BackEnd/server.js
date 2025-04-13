@@ -1,28 +1,138 @@
 const express = require('express');
-const https = require('https');
+// const https = require('https');
 const socketIo = require('socket.io');
 const path = require('path');
 const fs = require('fs');
+const sqlite3 = require('sqlite3').verbose();
 
 const app = express();
 
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+const session = require('express-session');
+app.use(session({
+  secret: 'fitbrawl_secret_key',
+  resave: false,
+  saveUninitialized: false
+}));
+
+
+const db = new sqlite3.Database(path.join(__dirname, '../database.db'), (err) => {
+  if (err) return console.error('Database error:', err);
+  console.log('Connected to SQLite database');
+});
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    pushups INTEGER DEFAULT 0,
+    squats INTEGER DEFAULT 0
+  )
+`, (err) => {
+  if (err) console.error('Table creation error:', err);
+  else console.log('Users table ready');
+});
+
+/*
 const options = {
   key: fs.readFileSync(path.join(__dirname, '../certs/172.20.10.4-key.pem')),
   cert: fs.readFileSync(path.join(__dirname, '../certs/172.20.10.4.pem'))
 };
-
+*/
 app.use(express.static(path.join(__dirname, '../Frontend')));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../Frontend/Home.html'));
 });
 
+app.post('/signup', (req, res) => {
+  const { username, email, password } = req.body;
+
+  const query = `
+    INSERT INTO users (username, email, password)
+    VALUES (?, ?, ?)
+  `;
+
+  db.run(query, [username, email, password], function(err) {
+    if (err) {
+      console.error(err.message);
+      return res.status(400).send('User already exists or input error.');
+    }
+    console.log('New user created with ID:', this.lastID);
+    res.send('Signup successful! Go back and login.');
+  });
+});
+
+
+app.post('/login', (req, res) => {
+  const { email, password } = req.body;
+
+  const sql = `SELECT * FROM users WHERE email = ?`;
+  db.get(sql, [email], (err, user) => {
+    if (err) return res.status(500).send('Database error');
+    if (!user || user.password !== password) return res.status(401).send('Invalid credentials');
+
+    req.session.userId = user.id; // Save user ID in session
+    res.redirect('/profile.html');
+  });
+});
+
+// Profile API route
+app.get('/api/profile', (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).send('Not logged in');
+  }
+
+  const sql = `SELECT pushups, squats FROM users WHERE id = ?`;
+  db.get(sql, [req.session.userId], (err, row) => {
+    if (err) return res.status(500).send('Failed to load profile');
+    res.json(row);
+  });
+});
+
+// Logout route
+app.post('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/index.html');
+  });
+});
+
+app.post('/update-stats', (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).send('Not logged in');
+  }
+
+  const { pushups, squats } = req.body;
+
+  const sql = `
+    UPDATE users
+    SET pushups = pushups + ?, squats = squats + ?
+    WHERE id = ?
+  `;
+  db.run(sql, [pushups || 0, squats || 0, req.session.userId], function (err) {
+    if (err) {
+      console.error(err);
+      return res.status(500).send('Database update failed');
+    }
+    res.send('Stats updated');
+  });
+});
+
+
 let players = {};
 let readyPlayers = 0;
 let battleStarted = false;
 let battleTimer = null;
 
-const server = https.createServer(options, app);
+// const server = https.createServer(options, app);
+
+//const io = socketIo(server);
+const http = require('http');
+const server = http.createServer(app);
 const io = socketIo(server);
 
 io.on('connection', (socket) => {
@@ -109,8 +219,14 @@ function endBattle() {
   readyPlayers = 0;
   battleStarted = false;
 }
-
+/*
 const port = 3000;
 server.listen(port, () => {
   console.log(`HTTPS server listening on https://172.20.10.4:${port}`);
 });
+*/
+const port = 3000;
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
+
