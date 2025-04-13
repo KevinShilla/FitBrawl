@@ -10,16 +10,21 @@
 <nav>
   <a href="home.html">Home</a>
   <a href="profile.html">Profile</a>
+  <a href="leaderboard.html">Leaderboard</a>
 </nav>
 
 <body>
   <div class="profile-card">
-    <h2>🏋️ FitBrawl Profile</h2>
+    <h2>FitBrawl Profile</h2>
     <div class="stat" id="pushupCount">0</div>
     <div class="label">Push-Ups Completed</div>
 
     <div class="stat" id="squatCount">0</div>
     <div class="label">Squats Completed</div>
+
+    <div class="stat" id="plankCount">0</div>
+    <div class="label">Plank Minutes Held</div>
+
 
     <button class="btn" onclick="logout()">Logout</button>
   </div>
@@ -31,6 +36,7 @@
       .then(data => {
         document.getElementById("pushupCount").textContent = data.pushups;
         document.getElementById("squatCount").textContent = data.squats;
+        document.getElementById("plankCount").textContent = data.planks;
       })
       .catch(err => {
         console.error('Failed to load stats:', err);

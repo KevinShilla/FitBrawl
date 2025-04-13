@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitBrawl Leaderboard</title>
+  <link rel="stylesheet" href="css/profile.css" />
+</head>
+<body>
+  <div class="profile-card">
+    <h2>🏆 Push-Up Leaderboard</h2>
+    <table id="pushupTable">
+      <thead>
+        <tr><th>Username</th><th>Push-Ups</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <h2>🏆 Squat Leaderboard</h2>
+    <table id="squatTable">
+      <thead>
+        <tr><th>Username</th><th>Squats</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h2>🏆 Plank Leaderboard</h2>
+    <table id="plankTable">
+    <thead>
+        <tr><th>Username</th><th>Minutes</th></tr>
+    </thead>
+    <tbody></tbody>
+    </table>
+
+
+  <script>
+    fetch('/api/leaderboard')
+      .then(res => res.json())
+      .then(data => {
+        const pushupBody = document.querySelector('#pushupTable tbody');
+        const squatBody = document.querySelector('#squatTable tbody');
+        const plankBody = document.querySelector('#plankTable tbody');
+
+        data.pushups.forEach(user => {
+          pushupBody.innerHTML += `<tr><td>${user.username}</td><td>${user.pushups}</td></tr>`;
+        });
+
+        data.squats.forEach(user => {
+          squatBody.innerHTML += `<tr><td>${user.username}</td><td>${user.squats}</td></tr>`;
+        });
+
+        data.planks.forEach(user => {
+            plankBody.innerHTML += `<tr><td>${user.username}</td><td>${user.planks}</td></tr>`;
+        });
+      });
+  </script>
+</body>
+</html>

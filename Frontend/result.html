@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Plank Result</title>
+ <title>Plank Result</title>
 </head>
 <body>
-  <h1>Your Plank Time</h1>
-  <p>You held the plank for <span id="plankResult">0</span> seconds!</p>
+ <h1>Your Plank Time</h1>
+ <p>You held the plank for <span id="plankResult">0</span> seconds!</p>
 
-  <script>
-    const time = localStorage.getItem("plankTime") || 0;
-    document.getElementById("plankResult").textContent = time;
-  </script>
+
+ <script>
+   const time = localStorage.getItem("plankTime") || 0;
+   document.getElementById("plankResult").textContent = time;
+ </script>
 </body>
 </html>

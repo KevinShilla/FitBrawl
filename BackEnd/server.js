@@ -37,6 +37,15 @@ db.run(`
   else console.log('Users table ready');
 });
 
+db.run(`ALTER TABLE users ADD COLUMN planks INTEGER DEFAULT 0`, (err) => {
+  if (err && !err.message.includes("duplicate")) {
+    console.error("Error adding planks column:", err.message);
+  } else {
+    console.log("Planks column added (or already exists).");
+  }
+});
+
+
 /*
 const options = {
   key: fs.readFileSync(path.join(__dirname, '../certs/172.20.10.4-key.pem')),
@@ -87,7 +96,7 @@ app.get('/api/profile', (req, res) => {
     return res.status(401).send('Not logged in');
   }
 
-  const sql = `SELECT pushups, squats FROM users WHERE id = ?`;
+  const sql = `SELECT pushups, squats, planks FROM users WHERE id = ?`;
   db.get(sql, [req.session.userId], (err, row) => {
     if (err) return res.status(500).send('Failed to load profile');
     res.json(row);
@@ -106,13 +115,13 @@ app.post('/update-stats', (req, res) => {
     return res.status(401).send('Not logged in');
   }
 
-  const { pushups, squats } = req.body;
+  const { pushups, squats, planks } = req.body;
 
   const sql = `
-    UPDATE users
-    SET pushups = pushups + ?, squats = squats + ?
-    WHERE id = ?
-  `;
+  UPDATE users
+  SET pushups = pushups + ?, squats = squats + ?, planks = planks + ?
+  WHERE id = ?
+`;
   db.run(sql, [pushups || 0, squats || 0, req.session.userId], function (err) {
     if (err) {
       console.error(err);
@@ -219,6 +228,35 @@ function endBattle() {
   readyPlayers = 0;
   battleStarted = false;
 }
+
+app.get('/api/leaderboard', (req, res) => {
+  const pushupsQuery = `SELECT username, pushups FROM users ORDER BY pushups DESC LIMIT 15`;
+  const squatsQuery = `SELECT username, squats FROM users ORDER BY squats DESC LIMIT 15`;
+  const plankQuery = `SELECT username, planks FROM users ORDER BY planks DESC LIMIT 15`;
+
+  const leaderboard = {};
+
+  db.all(pushupsQuery, [], (err, pushupResults) => {
+    if (err) return res.status(500).send("Error loading pushups");
+
+    leaderboard.pushups = pushupResults;
+
+    db.all(squatsQuery, [], (err, squatResults) => {
+      if (err) return res.status(500).send("Error loading squats");
+
+      leaderboard.squats = squatResults;
+      res.json(leaderboard);
+    });
+
+    db.all(plankQuery, [], (err, plankResults) => {
+      if (err) return res.status(500).send("Error loading planks");
+    
+      leaderboard.planks = plankResults;
+      res.json(leaderboard);
+    });
+  });
+});
+
 /*
 const port = 3000;
 server.listen(port, () => {
@@ -226,7 +264,7 @@ server.listen(port, () => {
 });
 */
 const port = 3000;
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
 
